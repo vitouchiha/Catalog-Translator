@@ -59,12 +59,13 @@ async def get_catalog(addon_url, type: str, query: str):
     return new_catalog
 
 
-@app.get('/{addon_url}/meta/{type}/{query:path}')
-async def get_meta(addon_url, type: str, query: str):
+@app.get('/{addon_url}/meta/{type}/{id}.json')
+async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{addon_meta_url}/meta/{type}/{query}")
+        response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
         meta = response.json()
+        meta['id'] = id
     return meta
 
 
