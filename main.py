@@ -65,7 +65,7 @@ async def get_meta(addon_url, type: str, id: str):
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
         meta = response.json()
-        meta['id'] = id
+        meta['meta']['id'] = id
     return meta
 
 
