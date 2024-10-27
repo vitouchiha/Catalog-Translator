@@ -68,7 +68,7 @@ async def get_meta(addon_url, type: str, id: str):
         if 'tt' in id:
             meta['meta']['id'] = id
         elif 'tmdb' in id:
-            meta['meta']['id'] = meta['meta']['id'].get('imdb_id', id)
+            meta['meta']['id'] = meta['meta'].get('imdb_id', id)
     return meta
 
 
