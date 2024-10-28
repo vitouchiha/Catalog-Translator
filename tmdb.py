@@ -1,3 +1,4 @@
+from diskcache import Cache
 import httpx
 import os
 
@@ -7,6 +8,11 @@ import os
 TMDB_POSTER_URL = 'https://image.tmdb.org/t/p/w500'
 TMDB_BACK_URL = 'https://image.tmdb.org/t/p/original'
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
+
+# Cache set
+tmp_cache = Cache('/tmp/ids')
+tmp_cache.clear()
+cache_expire_time = 43200 # 12h
 
 async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
     url = f"https://api.themoviedb.org/3/find/{imdb_id}"
@@ -21,5 +27,11 @@ async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
         "accept": "application/json"
     }
 
-    response = await client.get(url, headers=headers, params=params)
-    return response.json()
+    item = tmp_cache.get(imdb_id)
+
+    if item != None:
+        return item
+    else:
+        response = await client.get(url, headers=headers, params=params)
+        tmp_cache.set(imdb_id, response.json(), expire=cache_expire_time)
+        return response.json()

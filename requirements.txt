@@ -2,3 +2,4 @@ httpx
 fastapi
 uvicorn
 jinja2
+diskcache
