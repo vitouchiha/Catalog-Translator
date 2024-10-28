@@ -118,7 +118,6 @@
         </div>
         <button type="submit" class="btn-save">Genera Link</button>
     </form>
-    <p class="footer-text" id="footer-text">Rimuovere "/manifest.json" dall'URL</p>
     <p id="generated-link"></p> 
     <button id="install-button" class="btn-install" style="display: none;">Installa</button> 
 </div>
@@ -126,7 +125,7 @@
 <script>
     document.getElementById('config-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        const addonUrl = document.getElementById('addon-url').value;
+        const addonUrl = document.getElementById('addon-url').value.replace('/manifest.json', '');
         const urlEncoded = btoa(addonUrl);
         const serverUrl = window.location.origin;
         const finalUrl = `${serverUrl}/${urlEncoded}/manifest.json`;
@@ -134,9 +133,6 @@
         // Mostra il link generato nel paragrafo
         document.getElementById('generated-link').textContent = `${finalUrl}`;
         document.getElementById('generated-link').style.display = 'block';
-        
-        // Nascondi il messaggio di footer
-        document.getElementById('footer-text').style.display = 'none';
 
         // Mostra il pulsante "Installa" e aggiorna l'href
         const installButton = document.getElementById('install-button');
