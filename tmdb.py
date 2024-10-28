@@ -33,5 +33,8 @@ async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
         return item
     else:
         response = await client.get(url, headers=headers, params=params)
-        tmp_cache.set(imdb_id, response.json(), expire=cache_expire_time)
+
+        if response.status_code == 200:
+            tmp_cache.set(imdb_id, response.json(), expire=cache_expire_time)
+            
         return response.json()
