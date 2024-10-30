@@ -1,6 +1,8 @@
 from diskcache import Cache
+from datetime import timedelta
 import httpx
 import os
+import asyncio
 
 #from dotenv import load_dotenv
 #load_dotenv()
@@ -12,7 +14,8 @@ TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 # Cache set
 tmp_cache = Cache('/tmp/ids')
 tmp_cache.clear()
-cache_expire_time = 43200 # 12h
+cache_expire_time = timedelta(days=1).total_seconds()
+max_retries = 5
 
 async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
     url = f"https://api.themoviedb.org/3/find/{imdb_id}"
@@ -26,15 +29,21 @@ async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
     headers = {
         "accept": "application/json"
     }
-
+    
     item = tmp_cache.get(imdb_id)
 
     if item != None:
         return item
     else:
-        response = await client.get(url, headers=headers, params=params)
+        for attempt in range(1, max_retries + 1):
+            response = await client.get(url, headers=headers, params=params)
 
-        if response.status_code == 200:
-            tmp_cache.set(imdb_id, response.json(), expire=cache_expire_time)
-            
-        return response.json()
+            if response.status_code == 200:
+                tmp_cache.set(imdb_id, response.json(), expire=cache_expire_time)
+                return response.json()
+
+            elif response.status_code == 429:
+                print(response)
+                await asyncio.sleep(attempt * 2)
+
+        return {}

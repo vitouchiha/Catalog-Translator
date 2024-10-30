@@ -1,12 +1,22 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from datetime import timedelta
 import asyncio
 import httpx
 import tmdb
 import base64
 
-app = FastAPI()
+
+# Starts keep alive HF
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(keep_alive_loop())
+    yield
+    print('Shutdown')
+
+app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
 # Config CORS
@@ -18,8 +28,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+stremio_headers = {
+    'connection': 'keep-alive', 
+    'user-agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.2 Chrome/83.0.4103.122 Safari/537.36 StremioShell/4.4.168', 
+    'accept': '*/*', 
+    'origin': 'https://app.strem.io', 
+    'sec-fetch-site': 'cross-site', 
+    'sec-fetch-mode': 'cors', 
+    'sec-fetch-dest': 'empty', 
+    'accept-encoding': 'gzip, deflate, br'
+}
 
 addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
+
+
+async def keep_alive_loop():
+    while True:
+        update_time = timedelta(days=1, hours=23, minutes=55).total_seconds()
+        await asyncio.sleep(update_time)
+        async with httpx.AsyncClient() as client:
+            await client.get(f"http://localhost:8080/keep_alive")
+
+@app.get('/keep_alive')
+async def keep_alive():
+    print('Keep Alive: updated.')
+    return "OK"
 
 
 @app.get('/')
@@ -31,23 +64,32 @@ async def configure(request: Request):
 @app.get('/{addon_url}/manifest.json')
 async def get_manifest(addon_url):
     addon_url = decode_base64_url(addon_url)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(f"{addon_url}/manifest.json")
         manifest = response.json()
 
-    manifest['description'] += ' | Tradotto da Toast Translator.'
+    manifest['name'] += ' 🇮🇹'
     manifest['id'] += '.toast'
-    manifest['idPrefixes'].append('tmdb')
+    
+    if 'idPrefixes' in manifest:
+        manifest['idPrefixes'].append('tmdb:')
+
+    if 'description' in manifest:
+        manifest['description'] += ' | Tradotto da Toast Translator.'
+    else:
+        manifest['description'] = 'Tradotto da Toast Translator.'
+
     if 'meta' not in manifest['resources']:
         manifest['resources'].append('meta')
+
     return manifest
 
 
 @app.get('/{addon_url}/catalog/{type}/{query:path}')
 async def get_catalog(addon_url, type: str, query: str):
     addon_url = decode_base64_url(addon_url)
-    async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
-        response = await client.get(f"{addon_url}/catalog/{type}/{query}")
+    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+        response = await client.get(f"{addon_url}/catalog/{type}/{query}", headers=stremio_headers)
         catalog = response.json()
 
         tasks = [
@@ -63,7 +105,7 @@ async def get_catalog(addon_url, type: str, query: str):
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
+        response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json", headers=stremio_headers)
         meta = response.json()
         if 'tt' in id:
             meta['meta']['id'] = id
