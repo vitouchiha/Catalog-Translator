@@ -89,7 +89,7 @@ async def get_manifest(addon_url):
 async def get_catalog(addon_url, type: str, query: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
-        response = await client.get(f"{addon_url}/catalog/{type}/{query}", headers=stremio_headers)
+        response = await client.get(f"{addon_url}/catalog/{type}/{query}")
         catalog = response.json()
 
         tasks = [
@@ -105,7 +105,7 @@ async def get_catalog(addon_url, type: str, query: str):
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json", headers=stremio_headers)
+        response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
         meta = response.json()
         if 'tt' in id:
             meta['meta']['id'] = id
