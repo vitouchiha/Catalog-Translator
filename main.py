@@ -74,7 +74,10 @@ async def get_manifest(addon_url):
     manifest['id'] += '.toast'
     
     if 'idPrefixes' in manifest:
-        manifest['idPrefixes'].append('tmdb:')
+        if 'tmdb:' not in manifest['idPrefixes']:
+            manifest['idPrefixes'].append('tmdb:')
+        if 'tt' not in manifest['idPrefixes']:
+            manifest['idPrefixes'].append('tt')
         #manifest['idPrefixes'].append('kitsu:')
 
     if 'description' in manifest:
