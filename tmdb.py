@@ -3,6 +3,7 @@ from datetime import timedelta
 import httpx
 import os
 import asyncio
+import kitsu
 
 #from dotenv import load_dotenv
 #load_dotenv()
@@ -17,8 +18,7 @@ tmp_cache.clear()
 cache_expire_time = timedelta(days=1).total_seconds()
 max_retries = 5
 
-async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
-    url = f"https://api.themoviedb.org/3/find/{imdb_id}"
+async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str, type: str) -> dict:
 
     params = {
         "external_source": "imdb_id",
@@ -29,7 +29,11 @@ async def get_tmdb_data(client: httpx.AsyncClient, imdb_id: str) -> dict:
     headers = {
         "accept": "application/json"
     }
+
+    if 'kitsu' in imdb_id:
+        imdb_id = await kitsu.convert_to_imdb(imdb_id, type)
     
+    url = f"https://api.themoviedb.org/3/find/{imdb_id}"
     item = tmp_cache.get(imdb_id)
 
     if item != None:

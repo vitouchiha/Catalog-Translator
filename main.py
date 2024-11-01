@@ -1,11 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from contextlib import asynccontextmanager
 from datetime import timedelta
 import asyncio
 import httpx
 import tmdb
+import kitsu
 import base64
 
 
@@ -73,6 +75,7 @@ async def get_manifest(addon_url):
     
     if 'idPrefixes' in manifest:
         manifest['idPrefixes'].append('tmdb:')
+        #manifest['idPrefixes'].append('kitsu:')
 
     if 'description' in manifest:
         manifest['description'] += ' | Tradotto da Toast Translator.'
@@ -92,10 +95,14 @@ async def get_catalog(addon_url, type: str, query: str):
         response = await client.get(f"{addon_url}/catalog/{type}/{query}")
         catalog = response.json()
 
-        tasks = [
-            tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id'))) for item in catalog['metas']
-        ]
-        tmdb_details = await asyncio.gather(*tasks)
+        if 'metas' in catalog:
+            await remove_duplicates(catalog)
+            tasks = [
+                tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id')), item['type']) for item in catalog['metas']
+            ]
+            tmdb_details = await asyncio.gather(*tasks)
+        else:
+            return {}
 
     new_catalog = translate_catalog(catalog, tmdb_details)
     return new_catalog
@@ -104,13 +111,27 @@ async def get_catalog(addon_url, type: str, query: str):
 @app.get('/{addon_url}/meta/{type}/{id}.json')
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
+    print(id)
+    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+
+        # Try convertion
+        if 'kitsu' in id:
+            id = await kitsu.convert_to_imdb(id, type)
+
+        # Not converted
+        if 'kitsu' in id:
+            response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
+        else:
+            response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
+
         meta = response.json()
+
+        # Force to use imdb_id
         if 'tt' in id:
             meta['meta']['id'] = id
         elif 'tmdb' in id:
             meta['meta']['id'] = meta['meta'].get('imdb_id', id)
+
     return meta
 
 
@@ -153,6 +174,22 @@ def decode_base64_url(encoded_url):
     encoded_url += padding
     decoded_bytes = base64.b64decode(encoded_url)
     return decoded_bytes.decode('utf-8')
+
+
+async def remove_duplicates(catalog) -> None:
+    unique_items = []
+    seen_ids = set()
+    
+    for item in catalog['metas']:    
+        if item['id'] not in seen_ids:
+            if 'kitsu' in item['id']:
+                item['id'] = await kitsu.convert_to_imdb(item['id'], item['type'])
+
+            unique_items.append(item)
+            seen_ids.add(item['id'])
+
+    catalog['items'] = unique_items
+
 
 
 if __name__ == '__main__':
