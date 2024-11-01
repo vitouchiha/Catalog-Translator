@@ -130,10 +130,11 @@ async def get_meta(addon_url, type: str, id: str):
         meta = response.json()
 
         # Force to use imdb_id
-        if 'tt' in id:
-            meta['meta']['id'] = id
-        elif 'tmdb' in id:
-            meta['meta']['id'] = meta['meta'].get('imdb_id', id)
+        if 'kitsu' not in id:
+            if 'tt' in id:
+                meta['meta']['id'] = id
+            elif 'tmdb' in id:
+                meta['meta']['id'] = meta['meta'].get('imdb_id', id)
 
     return meta
 
