@@ -4,12 +4,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from diskcache import Cache
 import asyncio
 import httpx
 import tmdb
 import kitsu
 import base64
 
+translator_version = 'v0.0.3'
+
+# Cache set
+tmp_cache = Cache('/tmp/meta')
+tmp_cache.clear()
+cache_expire_time = timedelta(hours=12).total_seconds()
 
 # Starts keep alive HF
 @asynccontextmanager
@@ -81,9 +88,9 @@ async def get_manifest(addon_url):
         #manifest['idPrefixes'].append('kitsu:')
 
     if 'description' in manifest:
-        manifest['description'] += ' | Tradotto da Toast Translator.'
+        manifest['description'] += f" | Tradotto da Toast Translator. {translator_version}"
     else:
-        manifest['description'] = 'Tradotto da Toast Translator.'
+        manifest['description'] = f"Tradotto da Toast Translator. {translator_version}"
 
     if 'meta' not in manifest['resources']:
         manifest['resources'].append('meta')
@@ -114,31 +121,42 @@ async def get_catalog(addon_url, type: str, query: str):
 @app.get('/{addon_url}/meta/{type}/{id}.json')
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
-    print(id)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+        meta = tmp_cache.get(id)
+        if meta == None:
+            # Try convertion
+            imdb_id = id
+            if 'kitsu' in id:
+                imdb_id = await kitsu.convert_to_imdb(id, type)
 
-        # Try convertion
-        if 'kitsu' in id:
-            id = await kitsu.convert_to_imdb(id, type)
+            # Not converted
+            if 'kitsu' in imdb_id:
+                response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
+                meta = response.json()
+            else:
+                response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
+                meta = response.json()
+                # Set kitsu id as default id (streams)
+                if type == 'movie':
+                    meta['meta']['behaviorHints']['defaultVideoId'] = id
+                elif type == 'series':
+                    videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
+                    meta['meta']['videos'] = videos
 
-        # Not converted
-        if 'kitsu' in id:
-            response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
-        else:
-            response = await client.get(f"{addon_meta_url}/meta/{type}/{id}.json")
-
-        meta = response.json()
-
-        # Force to use imdb_id
-        if 'kitsu' not in id:
-            if 'tt' in id:
+            # Keep the same id
+            if 'tt' in id or 'kitsu' in id:
                 meta['meta']['id'] = id
+
+            # Force to use imdb_id for movie and series tmdb
             elif 'tmdb' in id:
                 meta['meta']['id'] = meta['meta'].get('imdb_id', id)
+
+            tmp_cache.set(id, meta, expire=cache_expire_time)
 
     return meta
 
 
+# Function not used
 def extract_imdb_ids(catalog: dict) -> list:
     imdb_ids = []
     for meta in catalog['metas']:
@@ -184,16 +202,15 @@ async def remove_duplicates(catalog) -> None:
     unique_items = []
     seen_ids = set()
     
-    for item in catalog['metas']:    
-        if item['id'] not in seen_ids:
-            if 'kitsu' in item['id']:
-                item['id'] = await kitsu.convert_to_imdb(item['id'], item['type'])
+    for item in catalog['metas']:
+        if 'kitsu' in item['id']:
+            item['imdb_id'] = await kitsu.convert_to_imdb(item['id'], item['type'])
 
+        if item['imdb_id'] not in seen_ids:
             unique_items.append(item)
-            seen_ids.add(item['id'])
+            seen_ids.add(item['imdb_id'])
 
-    catalog['items'] = unique_items
-
+    catalog['metas'] = unique_items
 
 
 if __name__ == '__main__':
