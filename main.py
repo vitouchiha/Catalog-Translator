@@ -78,7 +78,7 @@ async def get_manifest(addon_url):
         manifest = response.json()
 
     manifest['name'] += ' 🇮🇹'
-    manifest['id'] += '.toast'
+    #manifest['id'] += '.toast'
     
     if 'idPrefixes' in manifest:
         if 'tmdb:' not in manifest['idPrefixes']:
