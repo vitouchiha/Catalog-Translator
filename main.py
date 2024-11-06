@@ -137,11 +137,12 @@ async def get_meta(addon_url, type: str, id: str):
                 response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
                 meta = response.json()
                 # Set kitsu id as default id (streams)
-                if type == 'movie':
-                    meta['meta']['behaviorHints']['defaultVideoId'] = id
-                elif type == 'series':
-                    videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
-                    meta['meta']['videos'] = videos
+                if 'kitsu' in id:
+                    if type == 'movie':
+                        meta['meta']['behaviorHints']['defaultVideoId'] = id
+                    elif type == 'series':
+                        videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
+                        meta['meta']['videos'] = videos
 
             # Keep the same id
             if 'tt' in id or 'kitsu' in id:
