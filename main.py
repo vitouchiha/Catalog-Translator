@@ -49,6 +49,7 @@ stremio_headers = {
 }
 
 addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
+cinemeta_url = 'https://v3-cinemeta.strem.io'
 
 
 async def keep_alive_loop():
@@ -100,6 +101,11 @@ async def get_manifest(addon_url):
 
 @app.get('/{addon_url}/catalog/{type}/{query:path}')
 async def get_catalog(addon_url, type: str, query: str):
+
+    # Cinemeta last-videos
+    if 'last-videos' in query:
+        return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{query}")
+
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
         response = await client.get(f"{addon_url}/catalog/{type}/{query}")
