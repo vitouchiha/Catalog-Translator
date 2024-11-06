@@ -45,7 +45,7 @@ def parse_meta_videos(videos: dict, imdb_id: str) -> dict:
                     if item[kitsu_id]['season'] == -1:
                         videos[i]['id'] = f"kitsu:{kitsu_id}:{(i - special_offset) + 1}"
                     else:
-                        videos[i]['id'] = f"kitsu:{kitsu_id}:{video['episode']}"
+                        videos[i]['id'] = f"kitsu:{kitsu_id}:{video['episode'] - item[kitsu_id]['epoffset']}"
         else:
             special_offset += 1
 
