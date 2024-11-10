@@ -66,9 +66,8 @@ function generateTranslatorLink(addonUrl, skip_poster) {
     const serverUrl = window.location.origin;
     const urlEncoded = btoa(addonUrl.replace("/manifest.json", ""));
     //addonUrl = removeGetParams(addonUrl);
-    console.log(skip_poster);
-    if (addonUrl.includes(`${serverUrl}/${urlEncoded}/${skip_poster}`)) {
-        return addonUrl;
+    if (addonUrl.includes(serverUrl)) {
+        return addonUrl = addonUrl.replace("/0/" || "/1/", `/${skip_poster}/`);
     }
     const finalUrl = `${serverUrl}/${urlEncoded}/${skip_poster}/manifest.json`;
     return finalUrl
