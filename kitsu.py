@@ -36,6 +36,7 @@ async def convert_to_imdb(kitsu_id: str, type: str) -> str:
 def parse_meta_videos(videos: dict, imdb_id: str) -> dict:
     kitsu_ids = imdb_ids_map[imdb_id]['kitsu_ids']
     special_offset = 0
+    videos = sorted(videos, key=lambda x: (x["season"], x["episode"]))
     
     for i, video in enumerate(videos):
         if video['season'] != 0:
