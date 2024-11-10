@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from diskcache import Cache
@@ -11,7 +12,9 @@ import tmdb
 import kitsu
 import base64
 
-translator_version = 'v0.0.3'
+translator_version = 'v0.0.4'
+FORCE_PREFIX = False
+FORCE_META = False
 
 # Cache set
 tmp_cache = Cache('/tmp/meta')
@@ -21,12 +24,15 @@ cache_expire_time = timedelta(hours=12).total_seconds()
 # Starts keep alive HF
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(keep_alive_loop())
+    #asyncio.create_task(keep_alive_loop())
+    print('Started')
     yield
     print('Shutdown')
 
 app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # Config CORS
 app.add_middleware(
@@ -65,8 +71,8 @@ async def keep_alive():
     return "OK"
 
 
-@app.get('/')
-@app.get('/configure')
+@app.get('/', response_class=HTMLResponse)
+@app.get('/configure', response_class=HTMLResponse)
 async def configure(request: Request):
     return templates.TemplateResponse("configure.html", {"request": request})
 
@@ -78,41 +84,45 @@ async def get_manifest(addon_url):
         response = await client.get(f"{addon_url}/manifest.json")
         manifest = response.json()
 
-    manifest['name'] += ' 🇮🇹'
-    #manifest['id'] += '.toast'
+    is_translated = manifest.get('translated', False)
+    if not is_translated:
+        manifest['translated'] = True
+        manifest['name'] += ' 🇮🇹'
+
+        if 'description' in manifest:
+            manifest['description'] += f" | Tradotto da Toast Translator. {translator_version}"
+        else:
+            manifest['description'] = f"Tradotto da Toast Translator. {translator_version}"
     
-    if 'idPrefixes' in manifest:
-        if 'tmdb:' not in manifest['idPrefixes']:
-            manifest['idPrefixes'].append('tmdb:')
-        if 'tt' not in manifest['idPrefixes']:
-            manifest['idPrefixes'].append('tt')
-        #manifest['idPrefixes'].append('kitsu:')
+    if FORCE_PREFIX:
+        if 'idPrefixes' in manifest:
+            if 'tmdb:' not in manifest['idPrefixes']:
+                manifest['idPrefixes'].append('tmdb:')
+            if 'tt' not in manifest['idPrefixes']:
+                manifest['idPrefixes'].append('tt')
 
-    if 'description' in manifest:
-        manifest['description'] += f" | Tradotto da Toast Translator. {translator_version}"
-    else:
-        manifest['description'] = f"Tradotto da Toast Translator. {translator_version}"
-
-    if 'meta' not in manifest['resources']:
-        manifest['resources'].append('meta')
+    if FORCE_META:
+        if 'meta' not in manifest['resources']:
+            manifest['resources'].append('meta')
 
     return manifest
 
 
-@app.get('/{addon_url}/catalog/{type}/{query:path}')
-async def get_catalog(addon_url, type: str, query: str):
+@app.get('/{addon_url}/catalog/{type}/{path:path}')
+async def get_catalog(addon_url, type: str, path: str, skip_poster = Query(default='0')):
 
     # Cinemeta last-videos
-    if 'last-videos' in query:
-        return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{query}")
+    if 'last-videos' in path:
+        return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{path}")
 
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
-        response = await client.get(f"{addon_url}/catalog/{type}/{query}")
+        response = await client.get(f"{addon_url}/catalog/{type}/{path}")
         catalog = response.json()
 
         if 'metas' in catalog:
-            await remove_duplicates(catalog)
+            if type == 'anime':
+                await remove_duplicates(catalog)
             tasks = [
                 tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id')), item['type']) for item in catalog['metas']
             ]
@@ -120,7 +130,7 @@ async def get_catalog(addon_url, type: str, query: str):
         else:
             return {}
 
-    new_catalog = translate_catalog(catalog, tmdb_details)
+    new_catalog = translate_catalog(catalog, tmdb_details, skip_poster)
     return new_catalog
 
 
@@ -163,6 +173,13 @@ async def get_meta(addon_url, type: str, id: str):
     return meta
 
 
+@app.get('/{addon_url}/subtitles/{path:path}')
+async def get_subs(addon_url, path: str):
+    addon_url = decode_base64_url(addon_url)
+    print(f"{addon_url}/{path}")
+    return RedirectResponse(f"{addon_url}/subtitles/{path}")
+
+
 # Function not used
 def extract_imdb_ids(catalog: dict) -> list:
     imdb_ids = []
@@ -171,9 +188,8 @@ def extract_imdb_ids(catalog: dict) -> list:
     return imdb_ids
 
 
-def translate_catalog(original: dict, tmdb_meta: dict) -> dict:
+def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
     new_catalog = original
-    
     for i, item in enumerate(new_catalog['metas']):
         try:
             type = item['type']
@@ -191,7 +207,8 @@ def translate_catalog(original: dict, tmdb_meta: dict) -> dict:
         except:
             print('Description skip')
         try:
-            item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
+            if skip_poster == "0":
+                item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
         except:
             print('Poster skip')
 
