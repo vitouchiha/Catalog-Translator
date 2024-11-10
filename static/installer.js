@@ -64,12 +64,12 @@ async function reloadAddons(authKey) {
 
 function generateTranslatorLink(addonUrl, skip_poster) {
     const serverUrl = window.location.origin;
+    const urlEncoded = btoa(addonUrl.replace("/manifest.json", ""));
     //addonUrl = removeGetParams(addonUrl);
     console.log(skip_poster);
     if (addonUrl.includes(`${serverUrl}/${urlEncoded}/${skip_poster}`)) {
         return addonUrl;
     }
-    const urlEncoded = btoa(addonUrl.replace("/manifest.json", ""));
     const finalUrl = `${serverUrl}/${urlEncoded}/${skip_poster}/manifest.json`;
     return finalUrl
 }
