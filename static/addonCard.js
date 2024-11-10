@@ -113,5 +113,4 @@ function toggleAddonSelection(installBtn, manifest, url) {
         
         transteArray = transteArray.filter(item => item !== manifest);
     }
-    console.log(transteArray);
 }

@@ -19,12 +19,12 @@ async function translateSelected(authKey, selectList) {
     for(var j=0; j<selectList.length; j++) {
         for(var i=0; i<addons.length; i++) {
             if (selectList[j].id == addons[i].manifest.id) {
-                var addonUrl = generateTranslatorLink(addons[i].transportUrl);
+                var addonUrl = generateTranslatorLink(addons[i].transportUrl, selectList[j].skipPoster);
                 var response = await fetch(addonUrl);
                 var tranlatorManifest = await response.json();
                 addons[i] = {
                     "manifest": tranlatorManifest,
-                    "transportUrl": `${addonUrl}?skip_poster=${selectList[j].skipPoster}`,
+                    "transportUrl": addonUrl,
                     "flags": {
                         "official": false,
                         "protected": false
@@ -34,19 +34,19 @@ async function translateSelected(authKey, selectList) {
             }
         }
         // Add new addon
-        var addonUrl = generateTranslatorLink(selectList[j].transportUrl);
+        var addonUrl = generateTranslatorLink(selectList[j].transportUrl, selectList[j].skipPoster);
         var response = await fetch(addonUrl);
         var tranlatorManifest = await response.json();
         addons[i] = {
             "manifest": tranlatorManifest,
-            "transportUrl": `${addonUrl}?skip_poster=${selectList[j].skipPoster}`,
+            "transportUrl": addonUrl,
             "flags": {
                 "official": false,
                 "protected": false
             }
         };
     }
-    console.log(addons);
+
     var resp = await stremioAddonCollectionSet(authKey, addons);
     if (resp.result.success == true) {
         alert("Addon installati correttamente!")
@@ -62,14 +62,14 @@ async function reloadAddons(authKey) {
     await stremioLoadAddons(authKey);
 }
 
-function generateTranslatorLink(addonUrl) {
+function generateTranslatorLink(addonUrl, skip_poster) {
     const serverUrl = window.location.origin;
-    addonUrl = removeGetParams(addonUrl);
+    //addonUrl = removeGetParams(addonUrl);
     if (addonUrl.includes(serverUrl)) {
         return addonUrl;
     }
     const urlEncoded = btoa(addonUrl.replace("/manifest.json", ""));
-    const finalUrl = `${serverUrl}/${urlEncoded}/manifest.json`;
+    const finalUrl = `${serverUrl}/${urlEncoded}/${skip_poster}/manifest.json`;
     return finalUrl
 }
 

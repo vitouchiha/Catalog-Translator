@@ -77,7 +77,7 @@ async def configure(request: Request):
     return templates.TemplateResponse("configure.html", {"request": request})
 
 
-@app.get('/{addon_url}/manifest.json')
+@app.get('/{addon_url}/{skip_poster}/manifest.json')
 async def get_manifest(addon_url):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
@@ -108,8 +108,8 @@ async def get_manifest(addon_url):
     return manifest
 
 
-@app.get('/{addon_url}/catalog/{type}/{path:path}')
-async def get_catalog(addon_url, type: str, path: str, skip_poster = Query(default='0')):
+@app.get('/{addon_url}/{skip_poster}/catalog/{type}/{path:path}')
+async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
 
     # Cinemeta last-videos
     if 'last-videos' in path:
@@ -134,7 +134,7 @@ async def get_catalog(addon_url, type: str, path: str, skip_poster = Query(defau
     return new_catalog
 
 
-@app.get('/{addon_url}/meta/{type}/{id}.json')
+@app.get('/{addon_url}/{skip_poster}/meta/{type}/{id}.json')
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
@@ -173,7 +173,7 @@ async def get_meta(addon_url, type: str, id: str):
     return meta
 
 
-@app.get('/{addon_url}/subtitles/{path:path}')
+@app.get('/{addon_url}/{skip_poster}/subtitles/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
     print(f"{addon_url}/{path}")
