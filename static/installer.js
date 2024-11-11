@@ -4,7 +4,6 @@ async function translateSelected(authKey, selectList) {
     const collection = await stremioAddonCollectionGet(authKey);
     var addons = [];
 
-    
     for(var i=0; i<collection.result.addons.length; i++) {
         addons.push({
             "manifest": collection.result.addons[i].manifest,

@@ -1,6 +1,19 @@
-async function loadAddon(url) {
+const addonBlackList = [
+    "org.stremio.mammamia",                 // Mamma Mia
+    "com.linvo.stremiochannels",            // Youtube
+    "org.community.orion",                  // Orion
+    "stremio.addons.mediafusion|elfhosted", // MediaFusion Elfhosted
+    "org.stremio.thepiratebay-catalog",     // TPB Catalog
+    "org.zoropogaddon",                     // One Piece Catalog
+    "com.noone.stremio-trakt-up-next",      // Trakt Up Next
+    "community.usatv",                      // USA TV
+    "community.argentinatv",                // Argentina TV
+]
+
+
+async function loadAddon(url, showError=false) {
     if (!url) {
-        console.log("Invalid URL.");
+        alert("Invalid URL.");
         return;
     }
 
@@ -8,13 +21,21 @@ async function loadAddon(url) {
         const response = await fetch(url);
         if (response.ok) {
             const manifest = await response.json();
-            if ("catalogs" in manifest && manifest.catalogs.length > 0) {
+            if (!addonBlackList.includes(manifest.id) && "catalogs" in manifest && manifest.catalogs.length > 0) {
                 createAddonCard(manifest, url);
+            } else {
+                if (showError) {
+                    alert("Addon non compatibile.");
+                }
+            }
+        } else {
+            if (showError){
+                alert(`Error: ${response.status}`);
             }
         }
 
     } catch (error) {
-        //console.log(error);
+        console.log(error);
     }
 }
 

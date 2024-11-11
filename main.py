@@ -172,12 +172,19 @@ async def get_meta(addon_url, type: str, id: str):
 
     return meta
 
-
+# Subs redirect
 @app.get('/{addon_url}/{skip_poster}/subtitles/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
     print(f"{addon_url}/{path}")
     return RedirectResponse(f"{addon_url}/subtitles/{path}")
+
+# Stream redirect
+@app.get('/{addon_url}/{skip_poster}/stream/{path:path}')
+async def get_subs(addon_url, path: str):
+    addon_url = decode_base64_url(addon_url)
+    print(f"{addon_url}/{path}")
+    return RedirectResponse(f"{addon_url}/stream/{path}")
 
 
 # Function not used
