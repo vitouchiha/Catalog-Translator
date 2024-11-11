@@ -8,7 +8,7 @@ async function loadAddon(url) {
         const response = await fetch(url);
         if (response.ok) {
             const manifest = await response.json();
-            if (manifest.resources.includes("catalog")) {
+            if ("catalogs" in manifest && manifest.catalogs.length > 0) {
                 createAddonCard(manifest, url);
             }
         }
