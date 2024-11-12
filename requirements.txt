@@ -3,4 +3,4 @@ fastapi
 uvicorn
 jinja2
 diskcache
-deepmerger
+deepmerge
