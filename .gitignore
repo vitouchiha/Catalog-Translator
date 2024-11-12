@@ -1,5 +1,5 @@
 .env
 __pycache__/
-app.py
 Dockerfile
 old_config.html
+translator.py

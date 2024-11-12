@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from diskcache import Cache
+from deepmerge import Merger
 import asyncio
 import httpx
 import tmdb
@@ -20,6 +21,32 @@ FORCE_META = False
 tmp_cache = Cache('/tmp/meta')
 tmp_cache.clear()
 cache_expire_time = timedelta(hours=12).total_seconds()
+
+
+# Merger
+meta_merger = Merger(
+    [(dict, "merge")],
+    ["override"],
+    ["override"]
+)
+
+# Videos Merger
+def merge_lists_on_id(list1, list2):
+    combined = list1 + list2
+    merged_dict = {}
+    translate_list = []
+
+    for item in combined:
+        if item['id'] not in merged_dict:
+            translate_list.append(item['id'])
+        else:
+            translate_list.remove(item['id'])
+
+        merged_dict[item['id']] = item
+
+    print(translate_list)
+    return list(merged_dict.values())
+
 
 # Starts keep alive HF
 @asynccontextmanager
@@ -150,8 +177,19 @@ async def get_meta(addon_url, type: str, id: str):
                 response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
                 meta = response.json()
             else:
-                response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
-                meta = response.json()
+                
+                # Merge TMDB meta to Cinemeta meta
+                if 'tt' in id or 'tt' in imdb_id:
+                    tasks = [
+                        client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json"),
+                        client.get(f"{cinemeta_url}/meta/{type}/{imdb_id}.json")
+                    ]
+                    metas = await asyncio.gather(*tasks)
+                    tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
+                    merged_videos = merge_lists_on_id(cinemeta_meta.get('meta', {}).get('videos', []), tmdb_meta.get('meta', {}).get('videos', []))
+                    meta = meta_merger.merge(cinemeta_meta, tmdb_meta)
+                    meta['meta']['videos'] = merged_videos
+
                 # Set kitsu id as default id (streams)
                 if 'kitsu' in id:
                     if type == 'movie':
@@ -176,23 +214,13 @@ async def get_meta(addon_url, type: str, id: str):
 @app.get('/{addon_url}/{skip_poster}/subtitles/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
-    print(f"{addon_url}/{path}")
     return RedirectResponse(f"{addon_url}/subtitles/{path}")
 
 # Stream redirect
 @app.get('/{addon_url}/{skip_poster}/stream/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
-    print(f"{addon_url}/{path}")
     return RedirectResponse(f"{addon_url}/stream/{path}")
-
-
-# Function not used
-def extract_imdb_ids(catalog: dict) -> list:
-    imdb_ids = []
-    for meta in catalog['metas']:
-        imdb_ids.append(meta.get('imdb_id', meta.get('id')))
-    return imdb_ids
 
 
 def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
@@ -218,6 +246,10 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
                 item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
         except:
             print('Poster skip')
+        try:
+            item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
+        except:
+            print("Background skip")
 
     return new_catalog
 
