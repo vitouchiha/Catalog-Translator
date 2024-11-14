@@ -206,6 +206,7 @@ async def get_meta(addon_url, type: str, id: str):
                     response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
                     meta = response.json()
 
+        tmp_cache.set(id, meta, expire=cache_expire_time)
         meta['meta']['id'] = id
         return meta
 
