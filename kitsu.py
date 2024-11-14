@@ -22,7 +22,6 @@ async def convert_to_imdb(kitsu_id: str, type: str) -> str:
 	if imdb_id == None:
 		async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
 			response = await client.get(f"{kitsu_addon_url}/meta/{type}/{kitsu_id.replace(':','%3A')}.json")
-			print(response)
 			try:
 				imdb_id = response.json()['meta']['imdb_id']
 				kitsu_cache.set(kitsu_id, imdb_id)
