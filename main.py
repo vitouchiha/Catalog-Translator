@@ -194,9 +194,7 @@ async def get_meta(addon_url, type: str, id: str):
                 imdb_id, is_converted = await kitsu.convert_to_imdb(id, type)
 
                 if is_converted:
-                    print(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
                     response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
-                    print(response.text)
                     meta = response.json()
                     if type == 'movie':
                         meta['meta']['behaviorHints']['defaultVideoId'] = id
