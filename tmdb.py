@@ -5,8 +5,8 @@ import os
 import asyncio
 import kitsu
 
-#from dotenv import load_dotenv
-#load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 TMDB_POSTER_URL = 'https://image.tmdb.org/t/p/w500'
 TMDB_BACK_URL = 'https://image.tmdb.org/t/p/original'
@@ -19,7 +19,6 @@ cache_expire_time = timedelta(days=1).total_seconds()
 max_retries = 5
 
 async def get_tmdb_data(client: httpx.AsyncClient, id: str, type: str) -> dict:
-
     params = {
         "external_source": "imdb_id",
         "language": "it-IT",

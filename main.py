@@ -165,50 +165,52 @@ async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
-        meta = tmp_cache.get(id)
-        if meta == None:
-            # Try convertion
-            imdb_id = id
-            if 'kitsu' in id:
-                imdb_id = await kitsu.convert_to_imdb(id, type)
 
-            # Not converted
-            if 'kitsu' in imdb_id:
-                response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
-                meta = response.json()
-            else:
+        # Get from cache
+        meta = tmp_cache.get(id)
+
+        # Not in cache
+        if meta == None:
+            # Handle imdb ids
+            if 'tt' in id:
+                tasks = [
+                    client.get(f"{addon_meta_url}/meta/{type}/{id}.json"),
+                    client.get(f"{cinemeta_url}/meta/{type}/{id}.json")
+                ]
+                metas = await asyncio.gather(*tasks)
+                tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
                 
-                # Merge TMDB meta to Cinemeta meta
-                if 'tt' in id or 'tt' in imdb_id:
-                    tasks = [
-                        client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json"),
-                        client.get(f"{cinemeta_url}/meta/{type}/{imdb_id}.json")
-                    ]
-                    metas = await asyncio.gather(*tasks)
-                    tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
+                # Not empty tmdb meta
+                if len(tmdb_meta['meta']) > 0:
                     merged_videos = merge_lists_on_id(cinemeta_meta.get('meta', {}).get('videos', []), tmdb_meta.get('meta', {}).get('videos', []))
                     meta = meta_merger.merge(cinemeta_meta, tmdb_meta)
                     meta['meta']['videos'] = merged_videos
+                else:
+                    meta = cinemeta_meta
 
-                # Set kitsu id as default id (streams)
-                if 'kitsu' in id:
+            # Handle kitsu ids
+            elif 'kitsu' in id:
+                # Try convert kitsu to imdb
+                imdb_id, is_converted = await kitsu.convert_to_imdb(id, type)
+
+                if is_converted:
+                    print(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
+                    response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
+                    print(response.text)
+                    meta = response.json()
                     if type == 'movie':
                         meta['meta']['behaviorHints']['defaultVideoId'] = id
                     elif type == 'series':
                         videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
                         meta['meta']['videos'] = videos
+                else:
+                    # Get meta from kitsu addon
+                    response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
+                    meta = response.json()
 
-            # Keep the same id
-            if 'tt' in id or 'kitsu' in id:
-                meta['meta']['id'] = id
+        meta['meta']['id'] = id
+        return meta
 
-            # Force to use imdb_id for movie and series tmdb
-            elif 'tmdb' in id:
-                meta['meta']['id'] = meta['meta'].get('imdb_id', id)
-
-            tmp_cache.set(id, meta, expire=cache_expire_time)
-
-    return meta
 
 # Subs redirect
 @app.get('/{addon_url}/{skip_poster}/subtitles/{path:path}')
@@ -267,7 +269,7 @@ async def remove_duplicates(catalog) -> None:
     
     for item in catalog['metas']:
         if 'kitsu' in item['id']:
-            item['imdb_id'] = await kitsu.convert_to_imdb(item['id'], item['type'])
+            item['imdb_id'], is_converted = await kitsu.convert_to_imdb(item['id'], item['type'])
 
         if item['imdb_id'] not in seen_ids:
             unique_items.append(item)

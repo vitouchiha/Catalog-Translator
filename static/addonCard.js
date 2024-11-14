@@ -8,6 +8,8 @@ const addonBlackList = [
     "com.noone.stremio-trakt-up-next",      // Trakt Up Next
     "community.usatv",                      // USA TV
     "community.argentinatv",                // Argentina TV
+    "tmdb-addon",                           // TMDB Addon
+    "pw.ers.concerts"                       // Music Concerts
 ]
 
 
