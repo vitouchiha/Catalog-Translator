@@ -3,7 +3,6 @@ from datetime import timedelta
 import httpx
 import os
 import asyncio
-import kitsu
 
 #from dotenv import load_dotenv
 #load_dotenv()

@@ -98,7 +98,7 @@ async def get_manifest(addon_url):
 
 
 @app.get('/{addon_url}/{skip_poster}/catalog/{type}/{path:path}')
-async def get_catalog(request: Request, addon_url, type: str, skip_poster: str, path: str):
+async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
 
     # Cinemeta last-videos
     if 'last-videos' in path:
@@ -146,9 +146,21 @@ async def get_meta(addon_url, type: str, id: str):
                 if len(tmdb_meta['meta']) > 0:
                     # Not merge anime
                     if id not in kitsu.imdb_ids_map:
+                        tasks = []
                         meta, merged_videos = meta_merger.merge(tmdb_meta, cinemeta_meta)
+                        if tmdb_meta['meta']['description'] == '':
+                            #meta['meta']['description'] = await translator.translate_with_api(client, meta['meta']['description'])
+                            tasks.append(translator.translate_with_api(client, meta['meta']['description']))
                         if type == 'series' and (len(meta['meta']['videos']) < len(merged_videos)):
-                            meta['meta']['videos'] = await translator.translate_episodes(client, merged_videos)
+                            #meta['meta']['videos'] = await translator.translate_episodes(client, merged_videos)
+                            tasks.append(translator.translate_episodes(client, merged_videos))
+
+                        translated_tasks = await asyncio.gather(*tasks)
+                        for task in translated_tasks:
+                            if isinstance(task, list):
+                                meta['meta']['videos'] = task
+                            elif isinstance(task, str):
+                                meta['meta']['description'] = task
                     else:
                         meta = tmdb_meta
                 else:

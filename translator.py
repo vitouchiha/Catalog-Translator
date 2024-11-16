@@ -1,20 +1,25 @@
+from diskcache import Cache
 import tmdb
 import asyncio
 import httpx
 
+# Cache set
+translations_cache = Cache('/tmp/translation_strings')
+translations_cache.clear()
+
+
 async def translate_with_api(client: httpx.AsyncClient, text: str, source='en', target='it') -> str:
-    api_url = 'https://trans.zillyhuhn.com/translate'
 
-    payload = {
-        "q": text,
-        "source": source,
-        "target": target,
-        "format": "text",
-        "alternatives": 0,
-    }
+    translation = translations_cache.get(text)
+    if translation == None:
+        api_url = f"https://lingva-translate-azure.vercel.app/api/v1/{source}/{target}/{text}"
 
-    response = await client.post(api_url, data=payload)
-    translated_text = response.json().get('translatedText', '')
+        response = await client.get(api_url)
+        translated_text = response.json().get('translation', '')
+        translations_cache.set(text, translated_text)
+    else:
+        translated_text = translation
+
     return translated_text
 
 
