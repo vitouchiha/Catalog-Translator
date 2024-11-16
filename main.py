@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from diskcache import Cache
-from deepmerge import Merger
+import meta_merger
 import translator
 import asyncio
 import httpx
@@ -24,35 +24,9 @@ tmp_cache.clear()
 cache_expire_time = timedelta(hours=12).total_seconds()
 
 
-# Merger
-meta_merger = Merger(
-    [(dict, "merge")],
-    ["override"],
-    ["override"]
-)
-
-# Videos Merger
-def merge_lists_on_id(list1, list2):
-    combined = list1 + list2
-    merged_dict = {}
-    translate_list = []
-
-    for item in combined:
-        if item['id'] not in merged_dict:
-            translate_list.append(item['id'])
-        else:
-            translate_list.remove(item['id'])
-
-        merged_dict[item['id']] = item
-
-    print(translate_list)
-    return list(merged_dict.values())
-
-
-# Starts keep alive HF
+# Server start
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #asyncio.create_task(keep_alive_loop())
     print('Started')
     yield
     print('Shutdown')
@@ -84,19 +58,6 @@ stremio_headers = {
 
 addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
 cinemeta_url = 'https://v3-cinemeta.strem.io'
-
-
-async def keep_alive_loop():
-    while True:
-        update_time = timedelta(days=1, hours=23, minutes=55).total_seconds()
-        await asyncio.sleep(update_time)
-        async with httpx.AsyncClient() as client:
-            await client.get(f"http://localhost:8080/keep_alive")
-
-@app.get('/keep_alive')
-async def keep_alive():
-    print('Keep Alive: updated.')
-    return "OK"
 
 
 @app.get('/', response_class=HTMLResponse)
@@ -137,7 +98,7 @@ async def get_manifest(addon_url):
 
 
 @app.get('/{addon_url}/{skip_poster}/catalog/{type}/{path:path}')
-async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
+async def get_catalog(request: Request, addon_url, type: str, skip_poster: str, path: str):
 
     # Cinemeta last-videos
     if 'last-videos' in path:
@@ -158,7 +119,7 @@ async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
         else:
             return {}
 
-    new_catalog = translate_catalog(catalog, tmdb_details, skip_poster)
+    new_catalog = translator.translate_catalog(catalog, tmdb_details, skip_poster)
     return new_catalog
 
 
@@ -180,23 +141,29 @@ async def get_meta(addon_url, type: str, id: str):
                 ]
                 metas = await asyncio.gather(*tasks)
                 tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
-                """
+                
                 # Not empty tmdb meta
                 if len(tmdb_meta['meta']) > 0:
-                    merged_videos = merge_lists_on_id(cinemeta_meta.get('meta', {}).get('videos', []), tmdb_meta.get('meta', {}).get('videos', []))
-                    meta = meta_merger.merge(cinemeta_meta, tmdb_meta)
-                    if (len(meta['meta']['videos']) < len(merged_videos)):
-                        meta['meta']['videos'] = await translator.translate_episodes(client, merged_videos)
+                    # Not merge anime
+                    if id not in kitsu.imdb_ids_map:
+                        meta, merged_videos = meta_merger.merge(tmdb_meta, cinemeta_meta)
+                        if type == 'series' and (len(meta['meta']['videos']) < len(merged_videos)):
+                            meta['meta']['videos'] = await translator.translate_episodes(client, merged_videos)
+                    else:
+                        meta = tmdb_meta
                 else:
-                """
-                meta = cinemeta_meta
-                tasks = [
-                    translator.translate_with_api(client, meta['meta']['description']),
-                    translator.translate_episodes(client, meta['meta']['videos'])
-                ]
-                description, episodes = await asyncio.gather(*tasks)
-                meta['meta']['description'] = description
-                meta['meta']['videos'] = episodes
+                    meta = cinemeta_meta
+                    tasks = [translator.translate_with_api(client, meta['meta']['description'])]
+                    if type == 'series':
+                        tasks.append(translator.translate_episodes(client, meta['meta']['videos']))
+                        description, episodes = await asyncio.gather(*tasks)
+                        meta['meta']['videos'] = episodes
+                        meta['meta']['videos'] = await translator.translate_episodes(client, meta['meta']['videos'])
+                    elif type == 'movie':
+                        description = await asyncio.gather(*tasks)
+
+                    meta['meta']['description'] = description
+    
                 
             # Handle kitsu ids
             elif 'kitsu' in id:
@@ -237,37 +204,6 @@ async def get_subs(addon_url, path: str):
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
     return RedirectResponse(f"{addon_url}/stream/{path}")
-
-
-def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
-    new_catalog = original
-    for i, item in enumerate(new_catalog['metas']):
-        try:
-            type = item['type']
-            type_key = 'movie' if type == 'movie' else 'tv'
-            detail = tmdb_meta[i][f"{type_key}_results"][0]
-        except:
-            print('Total skip')
-            continue
-        try:
-            item['name'] = detail['title'] if type == 'movie' else detail['name']
-        except:
-            print('Name skip')
-        try:
-            item['description'] = detail['overview']
-        except:
-            print('Description skip')
-        try:
-            if skip_poster == "0":
-                item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
-        except:
-            print('Poster skip')
-        try:
-            item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
-        except:
-            print("Background skip")
-
-    return new_catalog
 
 
 def decode_base64_url(encoded_url):

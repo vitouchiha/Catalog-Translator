@@ -11,7 +11,6 @@ async def translate_with_api(client: httpx.AsyncClient, text: str, source='en', 
         "target": target,
         "format": "text",
         "alternatives": 0,
-        #"api_key": ""
     }
 
     response = await client.post(api_url, data=payload)
@@ -26,28 +25,21 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
             type = item['type']
             type_key = 'movie' if type == 'movie' else 'tv'
             detail = tmdb_meta[i][f"{type_key}_results"][0]
-        except:
-            print('Total skip')
-            continue
-        try:
-            item['name'] = detail['title'] if type == 'movie' else detail['name']
-        except:
-            print('Name skip')
-        try:
-            item['description'] = detail['overview']
-        except:
-            print('Description skip')
-        try:
+        except: pass
+        else:
+            try: item['name'] = detail['title'] if type == 'movie' else detail['name']
+            except: pass
+            try: item['description'] = detail['overview']
+            except: pass
+            try: item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
+            except: pass
             if skip_poster == "0":
-                item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
-        except:
-            print('Poster skip')
-        try:
-            item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
-        except:
-            print("Background skip")
+                try: item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
+                except: pass
+
 
     return new_catalog
+
 
 async def translate_episodes(client: httpx.AsyncClient, original_episodes: list[dict]):
     translate_index = []
@@ -64,19 +56,14 @@ async def translate_episodes(client: httpx.AsyncClient, original_episodes: list[
 
     # Translate episodes 
     for i, t_index in enumerate(translate_index):
-        #if len(translations[i][f"tv_episode_results"] > 0):
-        try:
-            detail = translations[i][f"tv_episode_results"][0]
+        try: detail = translations[i][f"tv_episode_results"][0]
         except: pass
         else:
-            try:
-                new_episodes[t_index]['name'] = detail['name']
+            try: new_episodes[t_index]['name'] = detail['name']
             except: pass
-            try:
-                new_episodes[t_index]['overview'] = detail['overview']
+            try: new_episodes[t_index]['overview'] = detail['overview']
             except: pass
-            try:
-                new_episodes[t_index]['thumbnail'] = tmdb.TMDB_BACK_URL + detail['still_path']
+            try: new_episodes[t_index]['thumbnail'] = tmdb.TMDB_BACK_URL + detail['still_path']
             except: pass
 
     return new_episodes
