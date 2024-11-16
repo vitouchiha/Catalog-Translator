@@ -39,8 +39,8 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
             try: item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
             except: pass
             if skip_poster == "0":
-                try: item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
-                except: pass
+                try: item['poster'] = f'https://toastflix-ratings.hf.space/get_poster/{tmdb_meta[i]['imdb_id']}.jpg'#tmdb.TMDB_POSTER_URL + detail['poster_path']
+                except Exception as e: print(e)
 
 
     return new_catalog
