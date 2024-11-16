@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from diskcache import Cache
 from deepmerge import Merger
+import translator
 import asyncio
 import httpx
 import tmdb
@@ -151,7 +152,7 @@ async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
             if type == 'anime':
                 await remove_duplicates(catalog)
             tasks = [
-                tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id')), item['type']) for item in catalog['metas']
+                tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id')), "imdb_id") for item in catalog['metas']
             ]
             tmdb_details = await asyncio.gather(*tasks)
         else:
@@ -179,15 +180,24 @@ async def get_meta(addon_url, type: str, id: str):
                 ]
                 metas = await asyncio.gather(*tasks)
                 tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
-                
+                """
                 # Not empty tmdb meta
                 if len(tmdb_meta['meta']) > 0:
                     merged_videos = merge_lists_on_id(cinemeta_meta.get('meta', {}).get('videos', []), tmdb_meta.get('meta', {}).get('videos', []))
                     meta = meta_merger.merge(cinemeta_meta, tmdb_meta)
-                    meta['meta']['videos'] = merged_videos
+                    if (len(meta['meta']['videos']) < len(merged_videos)):
+                        meta['meta']['videos'] = await translator.translate_episodes(client, merged_videos)
                 else:
-                    meta = cinemeta_meta
-
+                """
+                meta = cinemeta_meta
+                tasks = [
+                    translator.translate_with_api(client, meta['meta']['description']),
+                    translator.translate_episodes(client, meta['meta']['videos'])
+                ]
+                description, episodes = await asyncio.gather(*tasks)
+                meta['meta']['description'] = description
+                meta['meta']['videos'] = episodes
+                
             # Handle kitsu ids
             elif 'kitsu' in id:
                 # Try convert kitsu to imdb
@@ -196,11 +206,16 @@ async def get_meta(addon_url, type: str, id: str):
                 if is_converted:
                     response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
                     meta = response.json()
-                    if type == 'movie':
-                        meta['meta']['behaviorHints']['defaultVideoId'] = id
-                    elif type == 'series':
-                        videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
-                        meta['meta']['videos'] = videos
+                    if len(meta['meta']) > 0:
+                        if type == 'movie':
+                            meta['meta']['behaviorHints']['defaultVideoId'] = id
+                        elif type == 'series':
+                            videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
+                            meta['meta']['videos'] = videos
+                    else:
+                        # Get meta from kitsu addon
+                        response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
+                        meta = response.json()
                 else:
                     # Get meta from kitsu addon
                     response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")

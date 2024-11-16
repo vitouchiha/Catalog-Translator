@@ -18,9 +18,9 @@ tmp_cache.clear()
 cache_expire_time = timedelta(days=1).total_seconds()
 max_retries = 5
 
-async def get_tmdb_data(client: httpx.AsyncClient, id: str, type: str) -> dict:
+async def get_tmdb_data(client: httpx.AsyncClient, id: str, source: str) -> dict:
     params = {
-        "external_source": "imdb_id",
+        "external_source": source,
         "language": "it-IT",
         "api_key": TMDB_API_KEY
     }
@@ -28,9 +28,6 @@ async def get_tmdb_data(client: httpx.AsyncClient, id: str, type: str) -> dict:
     headers = {
         "accept": "application/json"
     }
-
-    if 'kitsu' in id:
-        id = await kitsu.convert_to_imdb(id, type)
     
     url = f"https://api.themoviedb.org/3/find/{id}"
     item = tmp_cache.get(id)

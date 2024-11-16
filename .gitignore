@@ -2,5 +2,5 @@
 __pycache__/
 Dockerfile
 old_config.html
-translator.py
+translator_v1.py
 backup.txt
