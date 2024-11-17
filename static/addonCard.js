@@ -23,6 +23,7 @@ const compatibilityList = [
     "community.trakt-tv",               // Trakt TV
     "org.stremio.pubdomainmovies",      // Public Domains
     "org.imdbcatalogs",                 // IMDB Catalogs
+    "org.imdbcatalogs.rpdb",            // IMDB Catalogs (with ratings)
     "pw.ers.rottentomatoes",            // Rotten Tomatoes Catalogs
 ]
 
