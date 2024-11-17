@@ -14,7 +14,7 @@ import tmdb
 import kitsu
 import base64
 
-translator_version = 'v0.0.4'
+translator_version = 'v0.0.5'
 FORCE_PREFIX = False
 FORCE_META = False
 
@@ -65,8 +65,12 @@ cinemeta_url = 'https://v3-cinemeta.strem.io'
 async def configure(request: Request):
     return templates.TemplateResponse("configure.html", {"request": request})
 
+@app.get('/link_generator', response_class=HTMLResponse)
+async def link_generator(request: Request):
+    return templates.TemplateResponse("link_generator.html", {"request": request})
 
-@app.get('/{addon_url}/{skip_poster}/manifest.json')
+
+@app.get('/{addon_url}/{user_settings}/manifest.json')
 async def get_manifest(addon_url):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
@@ -76,6 +80,7 @@ async def get_manifest(addon_url):
     is_translated = manifest.get('translated', False)
     if not is_translated:
         manifest['translated'] = True
+        manifest['t_language'] = 'it-IT'
         manifest['name'] += ' 🇮🇹'
 
         if 'description' in manifest:
@@ -97,14 +102,15 @@ async def get_manifest(addon_url):
     return manifest
 
 
-@app.get('/{addon_url}/{skip_poster}/catalog/{type}/{path:path}')
-async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
-
+@app.get('/{addon_url}/{user_settings}/catalog/{type}/{path:path}')
+async def get_catalog(addon_url, type: str, user_settings: str, path: str):
     # Cinemeta last-videos
     if 'last-videos' in path:
         return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{path}")
-
+    
+    user_settings = parse_user_settings(user_settings)
     addon_url = decode_base64_url(addon_url)
+
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
         response = await client.get(f"{addon_url}/catalog/{type}/{path}")
         catalog = response.json()
@@ -119,11 +125,11 @@ async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
         else:
             return {}
 
-    new_catalog = translator.translate_catalog(catalog, tmdb_details, skip_poster)
+    new_catalog = translator.translate_catalog(catalog, tmdb_details, user_settings['sp'], user_settings['tr'])
     return new_catalog
 
 
-@app.get('/{addon_url}/{skip_poster}/meta/{type}/{id}.json')
+@app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
@@ -206,13 +212,13 @@ async def get_meta(addon_url, type: str, id: str):
 
 
 # Subs redirect
-@app.get('/{addon_url}/{skip_poster}/subtitles/{path:path}')
+@app.get('/{addon_url}/{user_settings}/subtitles/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
     return RedirectResponse(f"{addon_url}/subtitles/{path}")
 
 # Stream redirect
-@app.get('/{addon_url}/{skip_poster}/stream/{path:path}')
+@app.get('/{addon_url}/{user_settings}/stream/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
     return RedirectResponse(f"{addon_url}/stream/{path}")
@@ -240,6 +246,17 @@ async def remove_duplicates(catalog) -> None:
     catalog['metas'] = unique_items
 
 
+def parse_user_settings(user_settings: str) -> dict:
+    settings = user_settings.split(',')
+    _user_settings = {}
+
+    for setting in settings:
+        key, value = setting.split('=')
+        _user_settings[key] = value
+    
+    return _user_settings
+
+
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8080)   
+    uvicorn.run(app, host='0.0.0.0', port=8080)

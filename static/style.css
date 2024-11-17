@@ -164,14 +164,17 @@ button:hover {
     align-items: center;
 }
 
-/* Checkbox "Skip poster"*/
-.skip-poster {
+/* Checkboxs */
+.skip-poster,
+.toast-ratings {
     display: flex;
     align-items: left;
     margin-top: 10px;
     position: relative;
 }
-
-.skip-poster label {
+.skip-poster label,
+.toast-ratings label {
     margin-left: 5px;
 }
+
+

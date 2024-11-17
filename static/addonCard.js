@@ -1,3 +1,4 @@
+/*
 const addonBlackList = [
     "org.stremio.mammamia",                 // Mamma Mia
     "com.linvo.stremiochannels",            // Youtube
@@ -11,6 +12,19 @@ const addonBlackList = [
     "tmdb-addon",                           // TMDB Addon
     "pw.ers.concerts"                       // Music Concerts
 ]
+*/
+
+const compatibilityList = [
+    "com.linvo.cinemeta",               // Cinemeta
+    "community.anime.kitsu",            // Kitsu 
+    "org.stremio.animecatalogs",        // Anime Catalogs
+    "marcojoao.ml.cyberflix.catalog",   // Cyberflix Catalogs
+    "pw.ers.netflix-catalog",           // Streaming Catalogs
+    "community.trakt-tv",               // Trakt TV
+    "org.stremio.pubdomainmovies",      // Public Domains
+    "org.imdbcatalogs",                 // IMDB Catalogs
+    "pw.ers.rottentomatoes",            // Rotten Tomatoes Catalogs
+]
 
 
 async function loadAddon(url, showError=false) {
@@ -23,7 +37,7 @@ async function loadAddon(url, showError=false) {
         const response = await fetch(url);
         if (response.ok) {
             const manifest = await response.json();
-            if (!addonBlackList.includes(manifest.id) && "catalogs" in manifest && manifest.catalogs.length > 0) {
+            if (compatibilityList.includes(manifest.id)) {
                 createAddonCard(manifest, url);
             } else {
                 if (showError) {
@@ -51,6 +65,7 @@ function createAddonCard(manifest, url) {
     addonCard.appendChild(createAddonDescription(manifest));
     addonCard.appendChild(createAddonVersion(manifest));
     addonCard.appendChild(createSkipPosterOption(manifest));
+    addonCard.appendChild(createToastRatingsOption(manifest));
 
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "addon-actions";
@@ -107,6 +122,23 @@ function createSkipPosterOption(manifest) {
     return skipPosterDiv;
 }
 
+function createToastRatingsOption(manifest) {
+    const toastRatingsDiv = document.createElement("div");
+    toastRatingsDiv.className = "toast-ratings";
+
+    const toastRatingsCheckbox = document.createElement("input");
+    toastRatingsCheckbox.type = "checkbox";
+    toastRatingsCheckbox.id = `toastRatings-${manifest.name}`;
+    toastRatingsDiv.appendChild(toastRatingsCheckbox);
+
+    const toastRatingsLabel = document.createElement("label");
+    toastRatingsLabel.htmlFor = `toastRagings-${manifest.name}`;
+    toastRatingsLabel.innerText = "Toast Ratings";
+    toastRatingsDiv.appendChild(toastRatingsLabel);
+
+    return toastRatingsDiv;
+}
+
 function createInstallButton(manifest, url) {
     const installBtn = document.createElement("button");
     installBtn.className = "install-btn";
@@ -117,23 +149,29 @@ function createInstallButton(manifest, url) {
 }
 
 function toggleAddonSelection(installBtn, manifest, url) {
-    const checkbox = document.getElementById(`skipPoster-${manifest.name}`);
+    const spCheckbox = document.getElementById(`skipPoster-${manifest.name}`);
+    const trCheckbox = document.getElementById(`toastRatings-${manifest.name}`);
     if (installBtn.state === "active") {
         installBtn.state = "not_active";
         installBtn.innerText = "Rimuovi";
         installBtn.style.backgroundColor = "#ff4b4b";
         
-        const skipQuery = checkbox.checked ? 1 : 0;
-        checkbox.disabled = true;
+        const skipQuery = spCheckbox.checked ? 1 : 0;
+        const rateQuery = trCheckbox.checked ? 1 : 0;
+        spCheckbox.disabled = true;
+        trCheckbox.disabled = true;
         manifest.transportUrl = url;
         manifest.skipPoster = skipQuery;
+        manifest.toastRatings = rateQuery;
         transteArray.push(manifest);
     } else {
-        checkbox.disabled = false;
+        spCheckbox.disabled = false;
+        trCheckbox.disabled = false;
         installBtn.state = "active";
         installBtn.innerText = "Seleziona";
         installBtn.style.backgroundColor = "#2ecc71";
         
+        //Remove from translations selections
         transteArray = transteArray.filter(item => item !== manifest);
     }
 }

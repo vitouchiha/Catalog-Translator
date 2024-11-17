@@ -23,7 +23,7 @@ async def translate_with_api(client: httpx.AsyncClient, text: str, source='en', 
     return translated_text
 
 
-def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
+def translate_catalog(original: dict, tmdb_meta: dict, skip_poster, toast_ratings) -> dict:
     new_catalog = original
     for i, item in enumerate(new_catalog['metas']):
         try:
@@ -38,9 +38,14 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
             except: pass
             try: item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
             except: pass
-            if skip_poster == "0":
-                try: item['poster'] = f'https://toastflix-ratings.hf.space/get_poster/{tmdb_meta[i]['imdb_id']}.jpg'#tmdb.TMDB_POSTER_URL + detail['poster_path']
-                except Exception as e: print(e)
+            if skip_poster == '0':
+                try: 
+                    if toast_ratings == '1':
+                        item['poster'] = f'https://toastflix-ratings.hf.space/get_poster/{tmdb_meta[i]['imdb_id']}.jpg'
+                    else:
+                        item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
+                except Exception as e: 
+                    print(e)
 
 
     return new_catalog
