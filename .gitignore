@@ -1,6 +1,4 @@
 .env
 __pycache__/
 Dockerfile
-old_config.html
-translator_v1.py
 backup.txt
