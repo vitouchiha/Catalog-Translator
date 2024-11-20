@@ -6,50 +6,21 @@
     <title>Toast Translator</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/addonCard.js"></script>
+    <script src="/static/installer.js"></script>
 </head>
 <body>
+    <div class="container">
+        <div class="title">
+            <span class="toast">Toast</span>
+            <span class="translator">Translator</span>
+        </div>
 
+        <div class="add-group" style="display: flex;">
+            <input type="text" id="addon-url" placeholder="URL dell'addon da aggiungere">
+            <button type="add" onclick="loadAddon(document.getElementById('addon-url').value, true, 'generator')">+</button>
+        </div>
 
-
-<div class="container">
-    <div class="title">
-        <span class="toast">Toast</span>
-        <span class="translator">Translator</span>
+        <div id="addons-container"></div>
     </div>
-
-    <div class="add-group" style="display: flex;">
-        <input type="text" id="addon-url" placeholder="URL dell'addon da aggiungere">
-        <button type="add" onclick="loadAddon(document.getElementById('addon-url').value, true)">+</button>
-    </div>
-
-    <div id="addons-container"></div>
-
-    <div class="translate-button" hidden="true">
-        <button onclick="translateSelected(stremioUser.result.authKey, transteArray)">Applica</button>
-        <button onclick="reloadAddons(stremioUser.result.authKey)">Ricarica Addons</button>
-    </div>
-</div>
-
-<script>
-    document.getElementById('config-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const addonUrl = document.getElementById('addon-url').value.replace('/manifest.json', '');
-        const urlEncoded = btoa(addonUrl);
-        const serverUrl = window.location.origin;
-        const finalUrl = `${serverUrl}/${urlEncoded}/manifest.json`;
-
-        // Mostra il link generato nel paragrafo
-        document.getElementById('generated-link').textContent = `${finalUrl}`;
-        document.getElementById('generated-link').style.display = 'block';
-
-        // Mostra il pulsante "Installa" e aggiorna l'href
-        const installButton = document.getElementById('install-button');
-        installButton.onclick = function() {
-            window.location.href = `${finalUrl.replace("https", "stremio")}`;
-        };
-        installButton.style.display = 'block';
-    });
-</script>
-
 </body>
 </html>

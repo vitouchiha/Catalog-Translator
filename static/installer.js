@@ -63,7 +63,7 @@ async function reloadAddons(authKey) {
 
 function generateTranslatorLink(addonUrl, skip_poster, toast_ratings) {
     const serverUrl = window.location.origin;
-    const baseAddonUrl = getBaseUrl(addonUrl);
+    const baseAddonUrl = getBaseUrl(addonUrl).replace("/manifest.json", "");
     const urlEncoded = btoa(baseAddonUrl);
     const userSettings = `sp=${skip_poster},tr=${toast_ratings}`;
     
@@ -77,5 +77,5 @@ function generateTranslatorLink(addonUrl, skip_poster, toast_ratings) {
 
 function getBaseUrl(urlString) {
     const url = new URL(urlString);
-    return `${url.protocol}//${url.host}`;
-  }
+    return `${url.protocol}//${url.host}${url.pathname}`;
+}

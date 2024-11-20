@@ -28,7 +28,7 @@ const compatibilityList = [
 ]
 
 
-async function loadAddon(url, showError=false) {
+async function loadAddon(url, showError=false, type="default") {
     if (!url) {
         alert("Invalid URL.");
         return;
@@ -39,7 +39,7 @@ async function loadAddon(url, showError=false) {
         if (response.ok) {
             const manifest = await response.json();
             if (compatibilityList.includes(manifest.id)) {
-                createAddonCard(manifest, url);
+                createAddonCard(manifest, url, type);
             } else {
                 if (showError) {
                     alert("Addon non compatibile.");
@@ -56,7 +56,7 @@ async function loadAddon(url, showError=false) {
     }
 }
 
-function createAddonCard(manifest, url) {
+function createAddonCard(manifest, url, type="default") {
     const container = document.getElementById("addons-container");
 
     const addonCard = document.createElement("div");
@@ -69,9 +69,20 @@ function createAddonCard(manifest, url) {
     addonCard.appendChild(createToastRatingsOption(manifest));
 
     const actionsDiv = document.createElement("div");
-    actionsDiv.className = "addon-actions";
-    const installBtn = createInstallButton(manifest, url);
-    actionsDiv.appendChild(installBtn);
+    if (type == "default") {
+        actionsDiv.className = "addon-actions";
+        const installBtn = createInstallButton(manifest, url);
+        actionsDiv.appendChild(installBtn);
+    } 
+    else if (type == "generator") {
+        actionsDiv.className = "addon-actions";
+        const generateBtn = createGenerateButton(manifest, url);
+        const copyBtn = createCopyButton(manifest, url);
+        actionsDiv.appendChild(generateBtn);
+        actionsDiv.appendChild(copyBtn);
+        addonCard.appendChild(createLinkTextBox("", manifest));
+    }
+    
 
     addonCard.appendChild(actionsDiv);
     container.appendChild(addonCard);
@@ -83,7 +94,7 @@ function createAddonHeader(manifest) {
 
     const logo = document.createElement("img");
     logo.className = "addon-logo";
-    logo.src = manifest.logo || "https://via.placeholder.com/60";
+    logo.src = manifest.logo || "static/img/addon_logo.png";
     logo.alt = "Logo dell'addon";
     addonHeader.appendChild(logo);
 
@@ -149,6 +160,40 @@ function createInstallButton(manifest, url) {
     return installBtn;
 }
 
+function createGenerateButton(manifest, url) {
+    const generateBtn = document.createElement("button");
+    generateBtn.className = "generate-btn";
+    generateBtn.innerText = "Genera link";
+    generateBtn.onclick = () => generateLinkByCard(manifest, url, generateTranslatorLink);
+    return generateBtn;
+}
+
+function createGenerateButton(manifest, url) {
+    const generateBtn = document.createElement("button");
+    generateBtn.className = "generate-btn";
+    generateBtn.innerText = "Genera link";
+    generateBtn.onclick = () => generateLinkByCard(manifest, url, generateTranslatorLink);
+    return generateBtn;
+}
+
+function createCopyButton(manifest, url) {
+    const generateBtn = document.createElement("button");
+    generateBtn.className = "copy-btn";
+    generateBtn.innerText = "Copia link";
+    generateBtn.onclick = () => copyLinkCard(manifest);
+    return generateBtn;
+}
+
+function createLinkTextBox(link, manifest) {
+    const textArea = document.createElement("textarea");
+    textArea.className = "read-only-textarea";
+    textArea.id = `linkBox-${manifest.name}`;
+    textArea.readOnly = true; 
+    textArea.value = link;
+    return textArea;
+}
+
+
 function toggleAddonSelection(installBtn, manifest, url) {
     const spCheckbox = document.getElementById(`skipPoster-${manifest.name}`);
     const trCheckbox = document.getElementById(`toastRatings-${manifest.name}`);
@@ -175,4 +220,24 @@ function toggleAddonSelection(installBtn, manifest, url) {
         //Remove from translations selections
         transteArray = transteArray.filter(item => item !== manifest);
     }
+}
+
+async function copyLinkCard(manifest) {
+    const linkBox = document.getElementById(`linkBox-${manifest.name}`);
+    await navigator.clipboard.writeText(linkBox.value);
+    alert('Link copiato!');
+}
+
+function generateLinkByCard(manifest, url, linkGeneratorFunc) {
+    const spCheckbox = document.getElementById(`skipPoster-${manifest.name}`);
+    const trCheckbox = document.getElementById(`toastRatings-${manifest.name}`);
+    const linkBox = document.getElementById(`linkBox-${manifest.name}`)
+    const skipQuery = spCheckbox.checked ? 1 : 0;
+    const rateQuery = trCheckbox.checked ? 1 : 0;
+    const link = linkGeneratorFunc(url, skipQuery, rateQuery);
+    
+    linkBox.value = link;
+    linkBox.style.opacity = 100;
+    linkBox.style.height = "auto";
+    linkBox.style.height = (linkBox.scrollHeight) + "px";
 }

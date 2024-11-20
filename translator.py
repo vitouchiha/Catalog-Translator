@@ -25,19 +25,27 @@ async def translate_with_api(client: httpx.AsyncClient, text: str, source='en', 
 
 def translate_catalog(original: dict, tmdb_meta: dict, skip_poster, toast_ratings) -> dict:
     new_catalog = original
+
     for i, item in enumerate(new_catalog['metas']):
         try:
             type = item['type']
             type_key = 'movie' if type == 'movie' else 'tv'
             detail = tmdb_meta[i][f"{type_key}_results"][0]
-        except: pass
+        except:
+            # Set poster if contend not have tmdb informations
+            if toast_ratings == '1':
+                item['poster'] = f'https://toastflix-ratings.hf.space/get_poster/{tmdb_meta[i]['imdb_id']}.jpg'
+
         else:
             try: item['name'] = detail['title'] if type == 'movie' else detail['name']
             except: pass
+
             try: item['description'] = detail['overview']
             except: pass
+
             try: item['background'] = tmdb.TMDB_BACK_URL + detail['backdrop_path']
             except: pass
+
             if skip_poster == '0':
                 try: 
                     if toast_ratings == '1':
