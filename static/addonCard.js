@@ -38,7 +38,11 @@ async function loadAddon(url, showError=false, type="default") {
         const response = await fetch(url);
         if (response.ok) {
             const manifest = await response.json();
+            const serverUrl = window.location.origin;
             if (compatibilityList.includes(manifest.id)) {
+                if ("translated" in manifest && !url.includes(serverUrl)) {
+                    return;
+                }
                 createAddonCard(manifest, url, type);
             } else {
                 if (showError) {
