@@ -154,7 +154,7 @@ async def get_meta(addon_url, type: str, id: str):
                     if id not in kitsu.imdb_ids_map:
                         tasks = []
                         meta, merged_videos = meta_merger.merge(tmdb_meta, cinemeta_meta)
-                        print(meta['meta']['imdbRating'], tmdb_meta['meta']['imdbRating'])
+                        
                         if tmdb_meta['meta']['description'] == '':
                             tasks.append(translator.translate_with_api(client, meta['meta']['description']))
 
@@ -261,4 +261,4 @@ def parse_user_settings(user_settings: str) -> dict:
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8080)
+    uvicorn.run(app, host='0.0.0.0', port=8081)
