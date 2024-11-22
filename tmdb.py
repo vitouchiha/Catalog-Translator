@@ -3,7 +3,6 @@ from datetime import timedelta
 import httpx
 import os
 import asyncio
-import kitsu
 
 #from dotenv import load_dotenv
 #load_dotenv()
@@ -18,10 +17,9 @@ tmp_cache.clear()
 cache_expire_time = timedelta(days=1).total_seconds()
 max_retries = 5
 
-async def get_tmdb_data(client: httpx.AsyncClient, id: str, type: str) -> dict:
-
+async def get_tmdb_data(client: httpx.AsyncClient, id: str, source: str) -> dict:
     params = {
-        "external_source": "imdb_id",
+        "external_source": source,
         "language": "it-IT",
         "api_key": TMDB_API_KEY
     }
@@ -29,9 +27,6 @@ async def get_tmdb_data(client: httpx.AsyncClient, id: str, type: str) -> dict:
     headers = {
         "accept": "application/json"
     }
-
-    if 'kitsu' in id:
-        id = await kitsu.convert_to_imdb(id, type)
     
     url = f"https://api.themoviedb.org/3/find/{id}"
     item = tmp_cache.get(id)
@@ -43,8 +38,10 @@ async def get_tmdb_data(client: httpx.AsyncClient, id: str, type: str) -> dict:
             response = await client.get(url, headers=headers, params=params)
 
             if response.status_code == 200:
-                tmp_cache.set(id, response.json(), expire=cache_expire_time)
-                return response.json()
+                meta_dict = response.json()
+                meta_dict['imdb_id'] = id
+                tmp_cache.set(id, meta_dict, expire=cache_expire_time)
+                return meta_dict
 
             elif response.status_code == 429:
                 print(response)

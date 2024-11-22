@@ -18,7 +18,7 @@ async function translateSelected(authKey, selectList) {
     for(var j=0; j<selectList.length; j++) {
         for(var i=0; i<addons.length; i++) {
             if (selectList[j].id == addons[i].manifest.id) {
-                var addonUrl = generateTranslatorLink(addons[i].transportUrl, selectList[j].skipPoster);
+                var addonUrl = generateTranslatorLink(addons[i].transportUrl, selectList[j].skipPoster, selectList[j].toastRatings);
                 var response = await fetch(addonUrl);
                 var tranlatorManifest = await response.json();
                 addons[i] = {
@@ -33,7 +33,7 @@ async function translateSelected(authKey, selectList) {
             }
         }
         // Add new addon
-        var addonUrl = generateTranslatorLink(selectList[j].transportUrl, selectList[j].skipPoster);
+        var addonUrl = generateTranslatorLink(selectList[j].transportUrl, selectList[j].skipPoster, selectList[j].toastRatings);
         var response = await fetch(addonUrl);
         var tranlatorManifest = await response.json();
         addons[i] = {
@@ -61,19 +61,21 @@ async function reloadAddons(authKey) {
     await stremioLoadAddons(authKey);
 }
 
-function generateTranslatorLink(addonUrl, skip_poster) {
+function generateTranslatorLink(addonUrl, skip_poster, toast_ratings) {
     const serverUrl = window.location.origin;
-    const urlEncoded = btoa(addonUrl.replace("/manifest.json", ""));
-    //addonUrl = removeGetParams(addonUrl);
+    const baseAddonUrl = getBaseUrl(addonUrl).replace("/manifest.json", "");
+    const urlEncoded = btoa(baseAddonUrl);
+    const userSettings = `sp=${skip_poster},tr=${toast_ratings}`;
+    
     if (addonUrl.includes(serverUrl)) {
-        return addonUrl = addonUrl.replace("/0/" || "/1/", `/${skip_poster}/`);
+        const addonBase64String = addonUrl.split("/")[3];
+        return `${serverUrl}/${addonBase64String}/${userSettings}/manifest.json`;
     }
-    const finalUrl = `${serverUrl}/${urlEncoded}/${skip_poster}/manifest.json`;
-    return finalUrl
+
+    return `${serverUrl}/${urlEncoded}/${userSettings}/manifest.json`;
 }
 
-function removeGetParams(url) {
-    const urlObj = new URL(url);
-    urlObj.search = '';           
-    return urlObj.toString();     
+function getBaseUrl(urlString) {
+    const url = new URL(urlString);
+    return `${url.protocol}//${url.host}${url.pathname}`;
 }

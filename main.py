@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -6,13 +6,15 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from diskcache import Cache
+import meta_merger
+import translator
 import asyncio
 import httpx
 import tmdb
 import kitsu
 import base64
 
-translator_version = 'v0.0.4'
+translator_version = 'v0.0.5'
 FORCE_PREFIX = False
 FORCE_META = False
 
@@ -21,10 +23,10 @@ tmp_cache = Cache('/tmp/meta')
 tmp_cache.clear()
 cache_expire_time = timedelta(hours=12).total_seconds()
 
-# Starts keep alive HF
+
+# Server start
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #asyncio.create_task(keep_alive_loop())
     print('Started')
     yield
     print('Shutdown')
@@ -58,26 +60,17 @@ addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide
 cinemeta_url = 'https://v3-cinemeta.strem.io'
 
 
-async def keep_alive_loop():
-    while True:
-        update_time = timedelta(days=1, hours=23, minutes=55).total_seconds()
-        await asyncio.sleep(update_time)
-        async with httpx.AsyncClient() as client:
-            await client.get(f"http://localhost:8080/keep_alive")
-
-@app.get('/keep_alive')
-async def keep_alive():
-    print('Keep Alive: updated.')
-    return "OK"
-
-
 @app.get('/', response_class=HTMLResponse)
 @app.get('/configure', response_class=HTMLResponse)
 async def configure(request: Request):
     return templates.TemplateResponse("configure.html", {"request": request})
 
+@app.get('/link_generator', response_class=HTMLResponse)
+async def link_generator(request: Request):
+    return templates.TemplateResponse("link_generator.html", {"request": request})
 
-@app.get('/{addon_url}/{skip_poster}/manifest.json')
+
+@app.get('/{addon_url}/{user_settings}/manifest.json')
 async def get_manifest(addon_url):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
@@ -87,6 +80,7 @@ async def get_manifest(addon_url):
     is_translated = manifest.get('translated', False)
     if not is_translated:
         manifest['translated'] = True
+        manifest['t_language'] = 'it-IT'
         manifest['name'] += ' 🇮🇹'
 
         if 'description' in manifest:
@@ -108,14 +102,15 @@ async def get_manifest(addon_url):
     return manifest
 
 
-@app.get('/{addon_url}/{skip_poster}/catalog/{type}/{path:path}')
-async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
-
+@app.get('/{addon_url}/{user_settings}/catalog/{type}/{path:path}')
+async def get_catalog(addon_url, type: str, user_settings: str, path: str):
     # Cinemeta last-videos
     if 'last-videos' in path:
         return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{path}")
-
+    
+    user_settings = parse_user_settings(user_settings)
     addon_url = decode_base64_url(addon_url)
+
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
         response = await client.get(f"{addon_url}/catalog/{type}/{path}")
         catalog = response.json()
@@ -124,102 +119,111 @@ async def get_catalog(addon_url, type: str, skip_poster: str, path: str):
             if type == 'anime':
                 await remove_duplicates(catalog)
             tasks = [
-                tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id')), item['type']) for item in catalog['metas']
+                tmdb.get_tmdb_data(client, item.get('imdb_id', item.get('id')), "imdb_id") for item in catalog['metas']
             ]
             tmdb_details = await asyncio.gather(*tasks)
         else:
             return {}
 
-    new_catalog = translate_catalog(catalog, tmdb_details, skip_poster)
+    new_catalog = translator.translate_catalog(catalog, tmdb_details, user_settings['sp'], user_settings['tr'])
     return new_catalog
 
 
-@app.get('/{addon_url}/{skip_poster}/meta/{type}/{id}.json')
+@app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+
+        # Get from cache
         meta = tmp_cache.get(id)
+
+        # Not in cache
         if meta == None:
-            # Try convertion
-            imdb_id = id
-            if 'kitsu' in id:
-                imdb_id = await kitsu.convert_to_imdb(id, type)
+            # Handle imdb ids
+            if 'tt' in id:
+                tasks = [
+                    client.get(f"{addon_meta_url}/meta/{type}/{id}.json"),
+                    client.get(f"{cinemeta_url}/meta/{type}/{id}.json")
+                ]
+                metas = await asyncio.gather(*tasks)
+                tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
+                
+                # Not empty tmdb meta
+                if len(tmdb_meta['meta']) > 0:
+                    # Not merge anime
+                    if id not in kitsu.imdb_ids_map:
+                        tasks = []
+                        meta, merged_videos = meta_merger.merge(tmdb_meta, cinemeta_meta)
+                        
+                        if tmdb_meta['meta']['description'] == '':
+                            tasks.append(translator.translate_with_api(client, meta['meta']['description']))
 
-            # Not converted
-            if 'kitsu' in imdb_id:
-                response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
-                meta = response.json()
-            else:
-                response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
-                meta = response.json()
-                # Set kitsu id as default id (streams)
-                if 'kitsu' in id:
-                    if type == 'movie':
-                        meta['meta']['behaviorHints']['defaultVideoId'] = id
-                    elif type == 'series':
-                        videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
-                        meta['meta']['videos'] = videos
+                        if type == 'series' and (len(meta['meta']['videos']) < len(merged_videos)):
+                            tasks.append(translator.translate_episodes(client, merged_videos))
 
-            # Keep the same id
-            if 'tt' in id or 'kitsu' in id:
-                meta['meta']['id'] = id
+                        translated_tasks = await asyncio.gather(*tasks)
+                        for task in translated_tasks:
+                            if isinstance(task, list):
+                                meta['meta']['videos'] = task
+                            elif isinstance(task, str):
+                                meta['meta']['description'] = task
+                    else:
+                        meta = tmdb_meta
 
-            # Force to use imdb_id for movie and series tmdb
-            elif 'tmdb' in id:
-                meta['meta']['id'] = meta['meta'].get('imdb_id', id)
+                # Empty tmdb_data
+                else:
+                    meta = cinemeta_meta
+                    tasks = [translator.translate_with_api(client, meta['meta']['description'])]
+                    if type == 'series':
+                        tasks.append(translator.translate_episodes(client, meta['meta']['videos']))
+                        description, episodes = await asyncio.gather(*tasks)
+                        meta['meta']['videos'] = episodes
+                        meta['meta']['videos'] = await translator.translate_episodes(client, meta['meta']['videos'])
+                    elif type == 'movie':
+                        description = await asyncio.gather(*tasks)
 
-            tmp_cache.set(id, meta, expire=cache_expire_time)
+                    meta['meta']['description'] = description
+    
+                
+            # Handle kitsu ids
+            elif 'kitsu' in id:
+                # Try convert kitsu to imdb
+                imdb_id, is_converted = await kitsu.convert_to_imdb(id, type)
 
-    return meta
+                if is_converted:
+                    response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
+                    meta = response.json()
+                    if len(meta['meta']) > 0:
+                        if type == 'movie':
+                            meta['meta']['behaviorHints']['defaultVideoId'] = id
+                        elif type == 'series':
+                            videos = kitsu.parse_meta_videos(meta['meta']['videos'], imdb_id)
+                            meta['meta']['videos'] = videos
+                    else:
+                        # Get meta from kitsu addon
+                        response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
+                        meta = response.json()
+                else:
+                    # Get meta from kitsu addon
+                    response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
+                    meta = response.json()
+
+        meta['meta']['id'] = id
+        tmp_cache.set(id, meta, expire=cache_expire_time)
+        return meta
+
 
 # Subs redirect
-@app.get('/{addon_url}/{skip_poster}/subtitles/{path:path}')
+@app.get('/{addon_url}/{user_settings}/subtitles/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
-    print(f"{addon_url}/{path}")
     return RedirectResponse(f"{addon_url}/subtitles/{path}")
 
 # Stream redirect
-@app.get('/{addon_url}/{skip_poster}/stream/{path:path}')
+@app.get('/{addon_url}/{user_settings}/stream/{path:path}')
 async def get_subs(addon_url, path: str):
     addon_url = decode_base64_url(addon_url)
-    print(f"{addon_url}/{path}")
     return RedirectResponse(f"{addon_url}/stream/{path}")
-
-
-# Function not used
-def extract_imdb_ids(catalog: dict) -> list:
-    imdb_ids = []
-    for meta in catalog['metas']:
-        imdb_ids.append(meta.get('imdb_id', meta.get('id')))
-    return imdb_ids
-
-
-def translate_catalog(original: dict, tmdb_meta: dict, skip_poster) -> dict:
-    new_catalog = original
-    for i, item in enumerate(new_catalog['metas']):
-        try:
-            type = item['type']
-            type_key = 'movie' if type == 'movie' else 'tv'
-            detail = tmdb_meta[i][f"{type_key}_results"][0]
-        except:
-            print('Total skip')
-            continue
-        try:
-            item['name'] = detail['title'] if type == 'movie' else detail['name']
-        except:
-            print('Name skip')
-        try:
-            item['description'] = detail['overview']
-        except:
-            print('Description skip')
-        try:
-            if skip_poster == "0":
-                item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
-        except:
-            print('Poster skip')
-
-    return new_catalog
 
 
 def decode_base64_url(encoded_url):
@@ -235,7 +239,7 @@ async def remove_duplicates(catalog) -> None:
     
     for item in catalog['metas']:
         if 'kitsu' in item['id']:
-            item['imdb_id'] = await kitsu.convert_to_imdb(item['id'], item['type'])
+            item['imdb_id'], is_converted = await kitsu.convert_to_imdb(item['id'], item['type'])
 
         if item['imdb_id'] not in seen_ids:
             unique_items.append(item)
@@ -244,6 +248,17 @@ async def remove_duplicates(catalog) -> None:
     catalog['metas'] = unique_items
 
 
+def parse_user_settings(user_settings: str) -> dict:
+    settings = user_settings.split(',')
+    _user_settings = {}
+
+    for setting in settings:
+        key, value = setting.split('=')
+        _user_settings[key] = value
+    
+    return _user_settings
+
+
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8080)   
+    uvicorn.run(app, host='0.0.0.0', port=8081)
