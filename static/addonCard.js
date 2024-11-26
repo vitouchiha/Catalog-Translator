@@ -20,11 +20,13 @@ const compatibilityList = [
     "org.stremio.animecatalogs",        // Anime Catalogs
     "marcojoao.ml.cyberflix.catalog",   // Cyberflix Catalogs
     "pw.ers.netflix-catalog",           // Streaming Catalogs
+    "org.trakt.",                     // Trakt Stremio Official
     "community.trakt-tv",               // Trakt TV
     "org.stremio.pubdomainmovies",      // Public Domains
     "org.imdbcatalogs",                 // IMDB Catalogs
     "org.imdbcatalogs.rpdb",            // IMDB Catalogs (with ratings)
     "pw.ers.rottentomatoes",            // Rotten Tomatoes Catalogs
+    "com.mdblist."                  // MDBLists Catalogs
 ]
 
 
@@ -39,7 +41,7 @@ async function loadAddon(url, showError=false, type="default") {
         if (response.ok) {
             const manifest = await response.json();
             const serverUrl = window.location.origin;
-            if (compatibilityList.includes(manifest.id)) {
+            if (compatibilityList.some(id => manifest.id.startsWith(id))) {
                 if ("translated" in manifest && !url.includes(serverUrl)) {
                     return;
                 }

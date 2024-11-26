@@ -14,9 +14,11 @@ import tmdb
 import kitsu
 import base64
 
+# Settings
 translator_version = 'v0.0.5'
 FORCE_PREFIX = False
 FORCE_META = False
+REQUEST_TIMEOUT = 120
 
 # Cache set
 tmp_cache = Cache('/tmp/meta')
@@ -63,17 +65,25 @@ cinemeta_url = 'https://v3-cinemeta.strem.io'
 @app.get('/', response_class=HTMLResponse)
 @app.get('/configure', response_class=HTMLResponse)
 async def configure(request: Request):
-    return templates.TemplateResponse("configure.html", {"request": request})
+    response = templates.TemplateResponse("configure.html", {"request": request})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get('/link_generator', response_class=HTMLResponse)
 async def link_generator(request: Request):
-    return templates.TemplateResponse("link_generator.html", {"request": request})
+    response = templates.TemplateResponse("link_generator.html", {"request": request})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.get('/{addon_url}/{user_settings}/manifest.json')
 async def get_manifest(addon_url):
     addon_url = decode_base64_url(addon_url)
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         response = await client.get(f"{addon_url}/manifest.json")
         manifest = response.json()
 
@@ -111,9 +121,14 @@ async def get_catalog(addon_url, type: str, user_settings: str, path: str):
     user_settings = parse_user_settings(user_settings)
     addon_url = decode_base64_url(addon_url)
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=REQUEST_TIMEOUT) as client:
         response = await client.get(f"{addon_url}/catalog/{type}/{path}")
-        catalog = response.json()
+
+        try:
+            catalog = response.json()
+        except:
+            print(response.text)
+            return {}
 
         if 'metas' in catalog:
             if type == 'anime':
@@ -132,7 +147,7 @@ async def get_catalog(addon_url, type: str, user_settings: str, path: str):
 @app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
 async def get_meta(addon_url, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
-    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=REQUEST_TIMEOUT) as client:
 
         # Get from cache
         meta = tmp_cache.get(id)
@@ -149,7 +164,7 @@ async def get_meta(addon_url, type: str, id: str):
                 tmdb_meta, cinemeta_meta = metas[0].json(), metas[1].json()
                 
                 # Not empty tmdb meta
-                if len(tmdb_meta['meta']) > 0:
+                if len(tmdb_meta.get('meta', [])) > 0:
                     # Not merge anime
                     if id not in kitsu.imdb_ids_map:
                         tasks = []
