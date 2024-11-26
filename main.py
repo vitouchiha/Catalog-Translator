@@ -19,6 +19,7 @@ translator_version = 'v0.0.5'
 FORCE_PREFIX = False
 FORCE_META = False
 REQUEST_TIMEOUT = 120
+COMPATIBILITY_ID = ['tt', 'kitsu']
 
 # Cache set
 tmp_cache = Cache('/tmp/meta')
@@ -222,6 +223,11 @@ async def get_meta(addon_url, type: str, id: str):
                     # Get meta from kitsu addon
                     response = await client.get(f"{kitsu.kitsu_addon_url}/meta/{type}/{id.replace(':','%3A')}.json")
                     meta = response.json()
+
+            # Not compatible id
+            else:
+                return RedirectResponse(f"{addon_url}/meta/{type}/{id}.json")
+
 
         meta['meta']['id'] = id
         tmp_cache.set(id, meta, expire=cache_expire_time)
