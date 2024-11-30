@@ -1,7 +1,7 @@
 from diskcache import Cache
 from datetime import timedelta
 import httpx
-import anime_mapping
+import anime.anime_mapping as anime_mapping
 
 kitsu_addon_url = 'https://anime-kitsu.strem.fun'
 
@@ -9,10 +9,13 @@ kitsu_addon_url = 'https://anime-kitsu.strem.fun'
 kitsu_cache = Cache('/tmp/kitsu_ids')
 cache_expire_time = timedelta(days=7).total_seconds()
 kitsu_cache.clear()
+
+# Load kitsu -> imdb converter
 imdb_map = anime_mapping.load_kitsu_map()
 for kitsu_id, imdb_id in imdb_map.items():
 	kitsu_cache.set(f"kitsu:{kitsu_id}", imdb_id)
 
+# Load season / episode map
 imdb_ids_map = anime_mapping.load_imdb_map()
 
 

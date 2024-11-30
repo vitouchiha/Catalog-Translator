@@ -20,13 +20,14 @@ const compatibilityList = [
     "org.stremio.animecatalogs",        // Anime Catalogs
     "marcojoao.ml.cyberflix.catalog",   // Cyberflix Catalogs
     "pw.ers.netflix-catalog",           // Streaming Catalogs
-    "org.trakt.",                     // Trakt Stremio Official
+    "org.trakt.",                       // Trakt Stremio Official
     "community.trakt-tv",               // Trakt TV
     "org.stremio.pubdomainmovies",      // Public Domains
     "org.imdbcatalogs",                 // IMDB Catalogs
     "org.imdbcatalogs.rpdb",            // IMDB Catalogs (with ratings)
     "pw.ers.rottentomatoes",            // Rotten Tomatoes Catalogs
-    "com.mdblist."                  // MDBLists Catalogs
+    "com.mdblist.",                     // MDBLists Catalogs
+    "com.sagetendo.mal-stremio-addon"   // MAL Addon
 ]
 
 
