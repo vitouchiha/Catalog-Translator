@@ -1,10 +1,10 @@
-from diskcache import Cache
+from cache import Cache
 import tmdb
 import asyncio
 import httpx
 
 # Cache set
-translations_cache = Cache('/tmp/translation_strings')
+translations_cache = Cache(maxsize=float('inf'), ttl=float('inf'))
 translations_cache.clear()
 
 
@@ -50,7 +50,6 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster, toast_rating
             if skip_poster == '0':
                 try: 
                     if toast_ratings == '1':
-                        #item['poster'] = f'https://toastflix-ratings.hf.space/get_poster/{tmdb_meta[i]['imdb_id']}.jpg?tmdb_path={detail['poster_path']}&tmdb_rate={detail['vote_average']}'
                         item['poster'] = f"https://toastflix-tr-test.hf.space/{item['type']}/get_poster/{tmdb_meta[i]['imdb_id']}.jpg"
                     else:
                         item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']

@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from diskcache import Cache
+from cache import Cache
 from anime import kitsu, mal
 import meta_merger
 import translator
@@ -22,9 +22,8 @@ REQUEST_TIMEOUT = 120
 COMPATIBILITY_ID = ['tt', 'kitsu', 'mal']
 
 # Cache set
-tmp_cache = Cache('/tmp/meta')
-tmp_cache.clear()
-cache_expire_time = timedelta(hours=12).total_seconds()
+meta_cache = Cache(maxsize=100000, ttl=timedelta(hours=12).total_seconds())
+meta_cache.clear()
 
 
 # Server start
@@ -151,7 +150,7 @@ async def get_meta(addon_url, type: str, id: str):
     async with httpx.AsyncClient(follow_redirects=True, timeout=REQUEST_TIMEOUT) as client:
 
         # Get from cache
-        meta = tmp_cache.get(id)
+        meta = meta_cache.get(id)
 
         # Not in cache
         if meta == None:
@@ -240,7 +239,7 @@ async def get_meta(addon_url, type: str, id: str):
 
 
         meta['meta']['id'] = id
-        tmp_cache.set(id, meta, expire=cache_expire_time)
+        meta_cache.set(id, meta)
         return meta
 
 

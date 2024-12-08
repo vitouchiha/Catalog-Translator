@@ -1,4 +1,4 @@
-from diskcache import Cache
+from cache import Cache
 from datetime import timedelta
 import httpx
 import anime.anime_mapping as anime_mapping
@@ -6,8 +6,7 @@ import anime.anime_mapping as anime_mapping
 kitsu_addon_url = 'https://anime-kitsu.strem.fun'
 
 # Cache load
-kitsu_cache = Cache('/tmp/kitsu_ids')
-cache_expire_time = timedelta(days=7).total_seconds()
+kitsu_cache = Cache(maxsize=float('inf'), ttl=timedelta(days=30).total_seconds())
 kitsu_cache.clear()
 
 # Load kitsu -> imdb converter
@@ -31,7 +30,7 @@ async def convert_to_imdb(kitsu_id: str, type: str) -> str:
 				is_converted = True
 			except:
 				# If imdb_id not found save kitsu_id as imdb_id (better performance)
-				kitsu_cache.set(kitsu_id, kitsu_id, expire=cache_expire_time)
+				kitsu_cache.set(kitsu_id, kitsu_id)
 				return kitsu_id, is_converted
 	else:
 		is_converted = True
