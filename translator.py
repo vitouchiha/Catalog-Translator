@@ -2,10 +2,14 @@ from cache import Cache
 import tmdb
 import asyncio
 import httpx
+import os
 
 # Cache set
 translations_cache = Cache(maxsize=float('inf'), ttl=float('inf'))
 translations_cache.clear()
+
+# Poster ratings
+RATINGS_SERVER = os.getenv('TR_SERVER', 'https://toastflix-tr-test.hf.space')
 
 
 async def translate_with_api(client: httpx.AsyncClient, text: str, source='en', target='it') -> str:
@@ -35,7 +39,7 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster, toast_rating
             # Set poster if contend not have tmdb informations
             if toast_ratings == '1':
                 if 'tt' in tmdb_meta[i].get('imdb_id', ''):
-                    item['poster'] = f"https://toastflix-tr-test.hf.space/{item['type']}/get_poster/{tmdb_meta[i]['imdb_id']}.jpg"
+                    item['poster'] = f"{RATINGS_SERVER}/{item['type']}/get_poster/{tmdb_meta[i]['imdb_id']}.jpg"
 
         else:
             try: item['name'] = detail['title'] if type == 'movie' else detail['name']
@@ -50,7 +54,7 @@ def translate_catalog(original: dict, tmdb_meta: dict, skip_poster, toast_rating
             if skip_poster == '0':
                 try: 
                     if toast_ratings == '1':
-                        item['poster'] = f"https://toastflix-tr-test.hf.space/{item['type']}/get_poster/{tmdb_meta[i]['imdb_id']}.jpg"
+                        item['poster'] = f"{RATINGS_SERVER}/{item['type']}/get_poster/{tmdb_meta[i]['imdb_id']}.jpg"
                     else:
                         item['poster'] = tmdb.TMDB_POSTER_URL + detail['poster_path']
                 except Exception as e: 
