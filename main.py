@@ -198,7 +198,7 @@ async def get_meta(addon_url, type: str, id: str):
                             meta['meta']['videos'] = episodes
                             meta['meta']['videos'] = await translator.translate_episodes(client, meta['meta']['videos'])
                         elif type == 'movie':
-                            description = await asyncio.gather(*tasks)
+                            description = (await asyncio.gather(*tasks))[0]
 
                         meta['meta']['description'] = description
                     
