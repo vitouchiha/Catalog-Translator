@@ -15,7 +15,7 @@ import tmdb
 import base64
 
 # Settings
-translator_version = 'v0.0.6'
+translator_version = 'v0.0.6.1'
 FORCE_PREFIX = False
 FORCE_META = False
 REQUEST_TIMEOUT = 120
