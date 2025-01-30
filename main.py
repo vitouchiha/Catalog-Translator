@@ -191,14 +191,18 @@ async def get_meta(addon_url, type: str, id: str):
                     if len(cinemeta_meta.get('meta', [])) > 0:
                         meta = cinemeta_meta
                         description = meta['meta'].get('description', '')
-                        tasks = [translator.translate_with_api(client, description)]
+                        
                         if type == 'series':
-                            tasks.append(translator.translate_episodes(client, meta['meta']['videos']))
+                            tasks = [
+                                translator.translate_with_api(client, description),
+                                translator.translate_episodes(client, meta['meta']['videos'])
+                            ]
                             description, episodes = await asyncio.gather(*tasks)
                             meta['meta']['videos'] = episodes
                             meta['meta']['videos'] = await translator.translate_episodes(client, meta['meta']['videos'])
+                            
                         elif type == 'movie':
-                            description = (await asyncio.gather(*tasks))[0]
+                            description = translator.translate_with_api(client, description)
 
                         meta['meta']['description'] = description
                     
