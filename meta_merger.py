@@ -2,8 +2,6 @@ import copy
 
 
 def merge(tmdb: dict, cinemeta: dict) -> dict:
-    new_videos = []
-    new_meta = copy.deepcopy(cinemeta)
 
     # Empty cases
     if not cinemeta:
@@ -11,7 +9,11 @@ def merge(tmdb: dict, cinemeta: dict) -> dict:
     elif not tmdb:
         return cinemeta
     elif not cinemeta and not tmdb:
-        return {}
+        return {}, []
+    
+    # Merging
+    new_videos = []
+    new_meta = copy.deepcopy(cinemeta)
 
     if 'videos' in tmdb['meta']:
         new_meta['meta']['videos'] = tmdb['meta']['videos']
