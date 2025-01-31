@@ -49,3 +49,24 @@ async def get_tmdb_data(client: httpx.AsyncClient, id: str, source: str) -> dict
                 await asyncio.sleep(attempt * 2)
 
         return {}
+
+
+async def convert_imdb_to_tmdb(imdb_id: str) -> dict:
+
+    tmdb_data = tmp_cache.get(imdb_id)
+
+    if tmdb_data != None:
+        return get_id(tmdb_data)
+    else:
+        async with httpx.AsyncClient(timeout=20) as client:
+            tmdb_data = await get_tmdb_data(client, imdb_id, 'imdb_id')
+            return get_id(tmdb_data)
+        
+
+def get_id(tmdb_data: dict) -> str:
+    try:
+        id = next((v[0]["id"] for v in tmdb_data.values() if v), None)
+    except:
+        return tmdb_data['imdb_id']
+    else:
+        return f"tmdb:{id}"

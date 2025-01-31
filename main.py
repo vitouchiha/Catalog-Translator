@@ -15,9 +15,10 @@ import tmdb
 import base64
 
 # Settings
-translator_version = 'v0.0.6'
+translator_version = 'v0.0.7'
 FORCE_PREFIX = False
 FORCE_META = False
+USE_TMDB_ID_META = True
 REQUEST_TIMEOUT = 120
 COMPATIBILITY_ID = ['tt', 'kitsu', 'mal']
 
@@ -58,7 +59,7 @@ stremio_headers = {
     'accept-encoding': 'gzip, deflate, br'
 }
 
-addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
+tmdb_addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
 cinemeta_url = 'https://v3-cinemeta.strem.io'
 
 
@@ -152,12 +153,17 @@ async def get_meta(addon_url, type: str, id: str):
         # Get from cache
         meta = meta_cache.get(id)
 
+        # Return cached meta
+        if meta != None:
+            return meta
+
         # Not in cache
-        if meta == None:
+        else:
             # Handle imdb ids
             if 'tt' in id:
+                tmdb_id = await tmdb.convert_imdb_to_tmdb(id)
                 tasks = [
-                    client.get(f"{addon_meta_url}/meta/{type}/{id}.json"),
+                    client.get(f"{tmdb_addon_meta_url}/meta/{type}/{tmdb_id}.json"),
                     client.get(f"{cinemeta_url}/meta/{type}/{id}.json")
                 ]
                 metas = await asyncio.gather(*tasks)
@@ -220,7 +226,8 @@ async def get_meta(addon_url, type: str, id: str):
                     imdb_id, is_converted = await mal.convert_to_imdb(id.replace('_',':'), type)
 
                 if is_converted:
-                    response = await client.get(f"{addon_meta_url}/meta/{type}/{imdb_id}.json")
+                    tmdb_id = await tmdb.convert_imdb_to_tmdb(imdb_id)
+                    response = await client.get(f"{tmdb_addon_meta_url}/meta/{type}/{tmdb_id}.json")
                     meta = response.json()
                     if len(meta['meta']) > 0:
                         if type == 'movie':
@@ -242,9 +249,9 @@ async def get_meta(addon_url, type: str, id: str):
                 return RedirectResponse(f"{addon_url}/meta/{type}/{id}.json")
 
 
-        meta['meta']['id'] = id
-        meta_cache.set(id, meta)
-        return meta
+            meta['meta']['id'] = id
+            meta_cache.set(id, meta)
+            return meta
 
 
 # Subs redirect
