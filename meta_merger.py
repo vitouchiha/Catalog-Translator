@@ -5,9 +5,9 @@ def merge(tmdb: dict, cinemeta: dict) -> dict:
 
     # Empty cases
     if not cinemeta:
-        return tmdb
+        return tmdb, []
     elif not tmdb:
-        return cinemeta
+        return cinemeta, []
     elif not cinemeta and not tmdb:
         return {}, []
     
