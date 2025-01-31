@@ -194,7 +194,6 @@ async def get_meta(addon_url, type: str, id: str):
 
                 # Empty tmdb_data
                 else:
-                    print("CINEMETA ONLY")
                     if len(cinemeta_meta.get('meta', [])) > 0:
                         meta = cinemeta_meta
                         description = meta['meta'].get('description', '')
@@ -209,7 +208,6 @@ async def get_meta(addon_url, type: str, id: str):
                             meta['meta']['videos'] = await translator.translate_episodes(client, meta['meta']['videos'])
 
                         elif type == 'movie':
-                            print("CINEMETA IN MOVIE")
                             description = await translator.translate_with_api(client, description)
 
                         meta['meta']['description'] = description
