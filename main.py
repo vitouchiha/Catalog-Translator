@@ -146,7 +146,9 @@ async def get_catalog(addon_url, type: str, user_settings: str, path: str):
 
 
 @app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
-async def get_meta(addon_url, type: str, id: str):
+async def get_meta(request: Request, addon_url, type: str, id: str):
+    headers = dict(request.headers)
+    del headers['host']
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(follow_redirects=True, timeout=REQUEST_TIMEOUT) as client:
 
@@ -194,10 +196,7 @@ async def get_meta(addon_url, type: str, id: str):
 
                 # Empty tmdb_data
                 else:
-                    print("ONlY CINEMETA META")
-                    print(cinemeta_meta)
                     if len(cinemeta_meta.get('meta', [])) > 0:
-                        print("INSIDE")
                         meta = cinemeta_meta
                         description = meta['meta'].get('description', '')
                         
