@@ -17,7 +17,7 @@ tmp_cache.clear()
 
 
 # Too many requests retry
-async def fetch_and_retry(client: httpx.AsyncClient, url: str, params: dict, max_retries=5) -> dict:
+async def fetch_and_retry(client: httpx.AsyncClient, id: str, url: str, params: dict, max_retries=5) -> dict:
     headers = {
         "accept": "application/json"
     }
@@ -52,7 +52,7 @@ async def get_tmdb_data(client: httpx.AsyncClient, id: str, source: str) -> dict
     if item != None:
         return item
     else:
-        return await fetch_and_retry(client, url, params)
+        return await fetch_and_retry(client, id, url, params)
 
 
 # Converting imdb id to tmdb id
