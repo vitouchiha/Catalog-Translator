@@ -194,7 +194,9 @@ async def get_meta(addon_url, type: str, id: str):
 
                 # Empty tmdb_data
                 else:
+                    print("ONlY CINEMETA META")
                     if len(cinemeta_meta.get('meta', [])) > 0:
+                        print("INSIDE")
                         meta = cinemeta_meta
                         description = meta['meta'].get('description', '')
                         

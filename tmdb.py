@@ -15,9 +15,30 @@ TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 tmp_cache = Cache(maxsize=100000, ttl=timedelta(days=7).total_seconds())
 tmp_cache.clear()
 
-# Too many requests retry
-max_retries = 5
 
+# Too many requests retry
+async def fetch_and_retry(client: httpx.AsyncClient, url: str, params: dict, max_retries=5) -> dict:
+    headers = {
+        "accept": "application/json"
+    }
+
+    for attempt in range(1, max_retries + 1):
+        response = await client.get(url, headers=headers, params=params)
+
+        if response.status_code == 200:
+            meta_dict = response.json()
+            meta_dict['imdb_id'] = id
+            tmp_cache.set(id, meta_dict)
+            return meta_dict
+
+        elif response.status_code == 429:
+            print(response)
+            await asyncio.sleep(attempt * 2)
+
+    return {}
+
+
+# Get from external source id
 async def get_tmdb_data(client: httpx.AsyncClient, id: str, source: str) -> dict:
     params = {
         "external_source": source,
@@ -25,32 +46,16 @@ async def get_tmdb_data(client: httpx.AsyncClient, id: str, source: str) -> dict
         "api_key": TMDB_API_KEY
     }
 
-    headers = {
-        "accept": "application/json"
-    }
-    
     url = f"https://api.themoviedb.org/3/find/{id}"
     item = tmp_cache.get(id)
 
     if item != None:
         return item
     else:
-        for attempt in range(1, max_retries + 1):
-            response = await client.get(url, headers=headers, params=params)
-
-            if response.status_code == 200:
-                meta_dict = response.json()
-                meta_dict['imdb_id'] = id
-                tmp_cache.set(id, meta_dict)
-                return meta_dict
-
-            elif response.status_code == 429:
-                print(response)
-                await asyncio.sleep(attempt * 2)
-
-        return {}
+        return await fetch_and_retry(client, url, params)
 
 
+# Converting imdb id to tmdb id
 async def convert_imdb_to_tmdb(imdb_id: str) -> dict:
 
     tmdb_data = tmp_cache.get(imdb_id)
@@ -63,6 +68,7 @@ async def convert_imdb_to_tmdb(imdb_id: str) -> dict:
             return get_id(tmdb_data)
         
 
+# Search and parse id
 def get_id(tmdb_data: dict) -> str:
     try:
         id = next((v[0]["id"] for v in tmdb_data.values() if v), None)
