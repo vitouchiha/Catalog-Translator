@@ -150,7 +150,7 @@ async def get_meta(request: Request, addon_url, type: str, id: str):
     headers = dict(request.headers)
     del headers['host']
     addon_url = decode_base64_url(addon_url)
-    async with httpx.AsyncClient(follow_redirects=True, timeout=REQUEST_TIMEOUT) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=REQUEST_TIMEOUT, headers=stremio_headers) as client:
 
         # Get from cache
         meta = meta_cache.get(id)
