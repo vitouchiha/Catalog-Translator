@@ -59,8 +59,8 @@ stremio_headers = {
     'accept-encoding': 'gzip, deflate, br'
 }
 
-tmdb_addon_meta_url = 'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
-#tmdb_addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
+#tmdb_addon_meta_url = 'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
+tmdb_addon_meta_url = 'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22language%22%3A%22it-IT%22'
 cinemeta_url = 'https://v3-cinemeta.strem.io'
 
 
