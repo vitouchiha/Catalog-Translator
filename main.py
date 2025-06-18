@@ -13,6 +13,7 @@ import asyncio
 import httpx
 import tmdb
 import base64
+import os
 
 # Settings
 translator_version = 'v0.0.7'
