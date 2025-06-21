@@ -81,9 +81,9 @@ async def home(request: Request):
     response.headers["Expires"] = "0"
     return response
 
-@app.get('{addon_url}/{user_settings}/configure', response_class=HTMLResponse)
+@app.get('{addon_url}/{user_settings}/configure')
 async def configure(addon_url):
-    addon_url = decode_base64_url(addon_url)
+    addon_url = decode_base64_url(addon_url) + '/configure'
     return RedirectResponse(addon_url)
 
 @app.get('/link_generator', response_class=HTMLResponse)
