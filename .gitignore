@@ -2,4 +2,3 @@
 __pycache__/
 Dockerfile
 backup.txt
-beamup.json
