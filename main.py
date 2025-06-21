@@ -74,6 +74,13 @@ cinemeta_url = 'https://v3-cinemeta.strem.io'
 
 
 @app.get('/', response_class=HTMLResponse)
+async def home(request: Request):
+    response = templates.TemplateResponse("configure.html", {"request": request})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 @app.get('{addon_url}/{user_settings}/configure', response_class=HTMLResponse)
 async def configure(addon_url):
     return RedirectResponse(addon_url)
