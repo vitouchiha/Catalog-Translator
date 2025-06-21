@@ -83,6 +83,7 @@ async def home(request: Request):
 
 @app.get('{addon_url}/{user_settings}/configure', response_class=HTMLResponse)
 async def configure(addon_url):
+    addon_url = decode_base64_url(addon_url)
     return RedirectResponse(addon_url)
 
 @app.get('/link_generator', response_class=HTMLResponse)
