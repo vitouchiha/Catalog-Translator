@@ -16,7 +16,7 @@ import base64
 import os
 
 # Settings
-translator_version = 'v0.0.7'
+translator_version = 'v0.0.8'
 FORCE_PREFIX = False
 FORCE_META = False
 USE_TMDB_ID_META = True
