@@ -73,6 +73,15 @@ tmdb_addons_pool = [
 tmdb_addon_meta_url = tmdb_addons_pool[0]
 cinemeta_url = 'https://v3-cinemeta.strem.io'
 
+def json_response(data):
+    response = JSONResponse(data)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = '*'
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
@@ -125,7 +134,7 @@ async def get_manifest(addon_url):
         if 'meta' not in manifest['resources']:
             manifest['resources'].append('meta')
 
-    return manifest
+    return json_response(manifest)
 
 
 @app.get('/{addon_url}/{user_settings}/catalog/{type}/{path:path}')
@@ -157,15 +166,7 @@ async def get_catalog(response: Response, addon_url, type: str, user_settings: s
             return {}
 
     new_catalog = translator.translate_catalog(catalog, tmdb_details, user_settings['sp'], user_settings['tr'])
-
-    # Cache control headers
-    headers = {
-        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-        "Pragma": "no-cache",
-        "Expires": "0"
-    }
-
-    return JSONResponse(content=new_catalog, headers=headers)
+    return json_response(new_catalog)
 
 
 @app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
@@ -300,15 +301,7 @@ async def get_meta(request: Request,response: Response, addon_url, type: str, id
 
             meta['meta']['id'] = id
             meta_cache.set(id, meta)
-
-            # Cache control headers
-            headers = {
-                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-
-            return JSONResponse(content=meta, headers=headers)
+            return json_response(meta)
 
 
 # Subs redirect
