@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -65,9 +65,9 @@ stremio_headers = {
 #tmdb_elfhosted = 'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
 
 tmdb_addons_pool = [
+    'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Elfhosted
     'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Official
-    'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Madari
-    'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Elfhosted
+    'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Madari
 ]
 
 tmdb_addon_meta_url = tmdb_addons_pool[0]
@@ -129,7 +129,7 @@ async def get_manifest(addon_url):
 
 
 @app.get('/{addon_url}/{user_settings}/catalog/{type}/{path:path}')
-async def get_catalog(addon_url, type: str, user_settings: str, path: str):
+async def get_catalog(response: Response, addon_url, type: str, user_settings: str, path: str):
     # Cinemeta last-videos
     if 'last-videos' in path:
         return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{path}")
@@ -157,11 +157,19 @@ async def get_catalog(addon_url, type: str, user_settings: str, path: str):
             return {}
 
     new_catalog = translator.translate_catalog(catalog, tmdb_details, user_settings['sp'], user_settings['tr'])
-    return new_catalog
+
+    # Cache control headers
+    headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+
+    return JSONResponse(content=new_catalog, headers=headers)
 
 
 @app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
-async def get_meta(request: Request, addon_url, type: str, id: str):
+async def get_meta(request: Request,response: Response, addon_url, type: str, id: str):
     headers = dict(request.headers)
     del headers['host']
     addon_url = decode_base64_url(addon_url)
@@ -292,7 +300,15 @@ async def get_meta(request: Request, addon_url, type: str, id: str):
 
             meta['meta']['id'] = id
             meta_cache.set(id, meta)
-            return meta
+
+            # Cache control headers
+            headers = {
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+
+            return JSONResponse(content=meta, headers=headers)
 
 
 # Subs redirect
