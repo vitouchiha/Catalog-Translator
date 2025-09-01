@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -65,13 +65,23 @@ stremio_headers = {
 #tmdb_elfhosted = 'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D'
 
 tmdb_addons_pool = [
+    'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Elfhosted
     'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Official
-    'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Madari
-    'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Elfhosted
+    'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Madari
 ]
 
 tmdb_addon_meta_url = tmdb_addons_pool[0]
 cinemeta_url = 'https://v3-cinemeta.strem.io'
+
+def json_response(data):
+    response = JSONResponse(data)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = '*'
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["Surrogate-Control"] = "no-store"
+    return response
 
 
 @app.get('/', response_class=HTMLResponse)
@@ -125,11 +135,11 @@ async def get_manifest(addon_url):
         if 'meta' not in manifest['resources']:
             manifest['resources'].append('meta')
 
-    return manifest
+    return json_response(manifest)
 
 
 @app.get('/{addon_url}/{user_settings}/catalog/{type}/{path:path}')
-async def get_catalog(addon_url, type: str, user_settings: str, path: str):
+async def get_catalog(response: Response, addon_url, type: str, user_settings: str, path: str):
     # Cinemeta last-videos
     if 'last-videos' in path:
         return RedirectResponse(f"{cinemeta_url}/catalog/{type}/{path}")
@@ -157,11 +167,11 @@ async def get_catalog(addon_url, type: str, user_settings: str, path: str):
             return {}
 
     new_catalog = translator.translate_catalog(catalog, tmdb_details, user_settings['sp'], user_settings['tr'])
-    return new_catalog
+    return json_response(new_catalog)
 
 
 @app.get('/{addon_url}/{user_settings}/meta/{type}/{id}.json')
-async def get_meta(request: Request, addon_url, type: str, id: str):
+async def get_meta(request: Request,response: Response, addon_url, type: str, id: str):
     headers = dict(request.headers)
     del headers['host']
     addon_url = decode_base64_url(addon_url)
@@ -292,7 +302,7 @@ async def get_meta(request: Request, addon_url, type: str, id: str):
 
             meta['meta']['id'] = id
             meta_cache.set(id, meta)
-            return meta
+            return json_response(meta)
 
 
 # Subs redirect
