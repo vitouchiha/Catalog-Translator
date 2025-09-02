@@ -65,7 +65,8 @@ function generateTranslatorLink(addonUrl, skip_poster, toast_ratings) {
     const serverUrl = window.location.origin;
     const baseAddonUrl = getBaseUrl(addonUrl).replace("/manifest.json", "");
     const urlEncoded = btoa(baseAddonUrl);
-    const userSettings = `sp=${skip_poster},tr=${toast_ratings}`;
+    // Toast ratings disabled; force tr=0 to keep URL format stable
+    const userSettings = `sp=${skip_poster},tr=0`;
     
     if (addonUrl.includes(serverUrl)) {
         const addonBase64String = addonUrl.split("/")[3];
