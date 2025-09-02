@@ -66,8 +66,8 @@ stremio_headers = {
 
 tmdb_addons_pool = [
     'https://tmdb.elfhosted.com/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Elfhosted
-    'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D', # Official
-    'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Madari
+    'https://94c8cb9f702d-tmdb-addon.baby-beamup.club/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Official
+    #'https://tmdb-catalog.madari.media/%7B%22provide_imdbId%22%3A%22true%22%2C%22language%22%3A%22it-IT%22%7D' # Madari
 ]
 
 tmdb_addon_meta_url = tmdb_addons_pool[0]
@@ -154,7 +154,7 @@ async def get_catalog(response: Response, addon_url, type: str, user_settings: s
             catalog = response.json()
         except:
             print(response.text)
-            return {}
+            return json_response({})
 
         if 'metas' in catalog:
             if type == 'anime':
@@ -164,7 +164,7 @@ async def get_catalog(response: Response, addon_url, type: str, user_settings: s
             ]
             tmdb_details = await asyncio.gather(*tasks)
         else:
-            return {}
+            return json_response({})
 
     new_catalog = translator.translate_catalog(catalog, tmdb_details, user_settings['sp'], user_settings['tr'])
     return json_response(new_catalog)
@@ -183,7 +183,7 @@ async def get_meta(request: Request,response: Response, addon_url, type: str, id
 
         # Return cached meta
         if meta != None:
-            return meta
+            return json_response(meta)
 
         # Not in cache
         else:
@@ -255,7 +255,7 @@ async def get_meta(request: Request,response: Response, addon_url, type: str, id
                     
                     # Empty cinemeta and tmdb return empty meta
                     else:
-                        return {}
+                        return json_response({})
                     
                 
             # Handle kitsu and mal ids
