@@ -1,206 +1,189 @@
-/* Stile base */
+/* Cyberpunk Neon Theme */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+    --bg: #0a0b10;
+    --grad1: #0f0c29;
+    --grad2: #302b63;
+    --grad3: #24243e;
+    --neon-pink: #ff00ff;
+    --neon-cyan: #00fff0;
+    --neon-purple: #9b5de5;
+    --card: #121320;
+    --text: #e6e6ff;
+    --muted: #9aa0b4;
+    --success: #00ffa3;
+    --danger: #ff3b6a;
+}
+
+* { box-sizing: border-box; }
+
 body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #282c34;
-    color: white;
+    font-family: 'Share Tech Mono', 'Orbitron', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1000px 600px at 20% 10%, rgba(155,93,229,0.15), transparent),
+                radial-gradient(800px 500px at 80% 20%, rgba(0,255,240,0.12), transparent),
+                linear-gradient(135deg, var(--grad1), var(--grad2) 50%, var(--grad3));
+    color: var(--text);
+    min-height: 100vh;
+    margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
-    margin: 0;
+    overflow: hidden;
 }
 
-/* Contenitore principale */
 .container {
-    text-align: center;
-    background: linear-gradient(145deg, gray, gray);
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    width: 90%;
-    max-width: 700px;
-    max-height: 90vh; /* Altezza massima per mantenere lo scrolling */
-    overflow-y: scroll; /* Abilita lo scroll verticale all'interno del contenitore */
+    width: min(880px, 94vw);
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 36px 28px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(18,19,32,0.85), rgba(18,19,32,0.75));
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 0 30px rgba(155,93,229,0.15), 0 0 60px rgba(0,255,240,0.08) inset;
+    backdrop-filter: blur(6px);
 }
 
-/* Stile per browser WebKit (Chrome, Safari, Edge) */
-.container::-webkit-scrollbar {
-    display: none;
-}
+.container::-webkit-scrollbar { width: 8px; }
+.container::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--neon-purple), var(--neon-cyan)); border-radius: 8px; }
+.container::-webkit-scrollbar-track { background: transparent; }
 
-/* Titolo "Toast Translator" */
 .title {
-    font-size: 4em;
-    font-weight: bold;
-    color: #333;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(36px, 6vw, 68px);
+    letter-spacing: 2px;
+    margin: 0 0 18px 0;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(255,0,255,0.8), 0 0 30px rgba(0,255,240,0.5);
+}
+.title .toast { color: var(--neon-cyan); filter: drop-shadow(0 0 6px rgba(0,255,240,0.8)); }
+.title .translator { color: var(--neon-pink); filter: drop-shadow(0 0 6px rgba(255,0,255,0.8)); }
+
+.description {
+    color: var(--muted);
+    background: rgba(255,255,255,0.03);
+    border: 1px dashed rgba(255,255,255,0.1);
+    padding: 12px 16px;
+    border-radius: 10px;
     margin-bottom: 20px;
-    text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
 }
 
-.title .toast {
-    color: #f5deb3;
-}
-
-.title .translator {
-    color: #6a1b9a;
-}
-
-/* Textbox per URL e pulsante di caricamento */
-.login-group {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    box-sizing: border-box;
-    gap: 10px;
-}
-
-.add-group {
-    display: none;
-    width: 100%;
-}
+.login-group { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.add-group { display: none; width: 100%; gap: 10px; }
 
 input[type="email"],
 input[type="password"],
 input[type="text"] {
     flex: 1;
-    padding: 10px 20px;
+    padding: 12px 16px;
     font-size: 16px;
-    border-radius: 4px;
-    border: 1px solid #555;
-    background-color: #444;
-    color: white;
-    margin-right: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.35);
+    color: var(--text);
     outline: none;
+    transition: 200ms ease;
+    box-shadow: 0 0 0px rgba(0,255,240,0);
+}
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 14px rgba(0,255,240,0.3);
 }
 
 button {
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 4px;
-    margin-right: 10px;
-    background-color: #8e44ad;
-    color: #ffffff;
-    font-weight: bold;
+    padding: 12px 18px;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(155,93,229,0.15), rgba(0,255,240,0.15));
+    color: var(--text);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: transform 120ms ease, box-shadow 200ms ease, background 200ms ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
-
 button:hover {
-    background-color: #732d91;
+    transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(155,93,229,0.35), 0 0 24px rgba(0,255,240,0.25);
 }
 
-/* Riquadro addon */
 .addon-info {
-    background-color: #444;
-    padding: 15px;
-    border-radius: 8px;
-    text-align: left;
-    margin-top: 20px;
-    color: #ddd;
+    background: linear-gradient(180deg, rgba(18,19,32,0.85), rgba(18,19,32,0.6));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 18px;
+    color: var(--text);
     position: relative;
+    box-shadow: 0 0 20px rgba(0,255,240,0.06);
 }
+.addon-info::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255,0,255,0.35), rgba(0,255,240,0.3));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+.addon-info h3 { margin: 0 0 6px 0; font-size: 18px; letter-spacing: 0.5px; }
+.addon-info p { margin: 6px 0; color: var(--muted); }
 
-.addon-info h3 {
-    margin: 0 0 10px 0;
-    font-size: 18px;
-}
+.addon-actions { display: flex; gap: 10px; margin-top: 12px; }
+.addon-actions button { flex: 1; padding: 10px 14px; }
+.install-btn { background: linear-gradient(90deg, rgba(0,255,163,0.18), rgba(0,255,240,0.18)); color: var(--text); }
+.install-btn:hover { box-shadow: 0 0 14px rgba(0,255,163,0.35), 0 0 24px rgba(0,255,240,0.25); }
 
-.addon-info p {
-    margin: 5px 0;
-}
+.translate-button { display: flex; gap: 10px; margin-top: 14px; }
 
-/* Pulsant "Selezione/Rimuovi"*/
-.addon-actions {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-}
+.addon-logo { max-width: 60px; max-height: 60px; border-radius: 9px; margin-right: 10px; box-shadow: 0 0 12px rgba(0,255,240,0.2); }
+.addon-header { display: flex; align-items: center; }
 
-/* Pulsante a forma di pillola */
-.addon-actions button {
-    flex: 1;
-    margin: 0 5px;
-    padding: 8px;
-    font-size: 14px;
-    border-radius: 20px;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-/* Pulsante "Seleziona" */
-.install-btn {
-    background-color: #2ecc71;
-    color: #333;
-}
-
-.install-btn:hover {
-    background-color: #27ae60;
-}
-
-.translate-button {
-    flex: 1;
-    margin: 0 5px;
-    padding: 8px;
-    font-size: 14px;
-    border-radius: 20px;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-/* Logo dell'addon */
-.addon-logo {
-    max-width: 60px;
-    max-height: 60px;
-    border-radius: 8px;
-    margin-right: 10px;
-}
-
-/* Header del riquadro */
-.addon-header {
-    display: flex;
-    align-items: center;
-}
-
-/* Checkboxs */
-.skip-poster,
-.toast-ratings {
-    display: flex;
-    align-items: left;
-    margin-top: 10px;
-    position: relative;
-}
-.skip-poster label,
-.toast-ratings label {
-    margin-left: 5px;
-}
-
+.skip-poster { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.skip-poster input { accent-color: var(--neon-cyan); width: 18px; height: 18px; }
+.skip-poster label { font-size: 13px; color: var(--text); opacity: 0.9; }
 
 textarea {
     opacity: 0;
-    width: 90%;
+    width: 100%;
     height: 0px;
     margin-top: 10px;
-    margin-left: 10px;
-    padding: 5px 5px;
-    font-size: 16px;
-    border-radius: 8px;
-    border: 1px solid #555;
-    background-color: #444;
-    color: white;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.45);
+    color: var(--text);
     resize: none;
     outline: none;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: opacity 0.3s, height 0.3s;
-    overflow: hidden;
+    box-shadow: inset 0 0 8px rgba(0,255,240,0.08);
+}
+textarea[readonly] { pointer-events: none; }
+
+/* Subtle animated glow background */
+.container::after {
+    content: "";
+    position: fixed;
+    width: 60vmax;
+    height: 60vmax;
+    left: -10vmax;
+    bottom: -20vmax;
+    background: radial-gradient(circle, rgba(255,0,255,0.12), transparent 60%);
+    filter: blur(40px);
+    z-index: -1;
+    animation: floatGlow 12s ease-in-out infinite alternate;
 }
 
-textarea[readonly] {
-    background-color: #333; 
-    pointer-events: none; 
-    border: 1px solid #555;
+@keyframes floatGlow {
+    from { transform: translateY(0) translateX(0); }
+    to { transform: translateY(-20px) translateX(30px); }
 }
 
 
